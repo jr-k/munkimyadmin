@@ -24,6 +24,7 @@ export const Brand = styled.div`
   align-items: center;
   display: flex;
   gap: 12px;
+  justify-content: center;
 
   svg {
     flex: 0 0 auto;
@@ -39,6 +40,7 @@ export const Help = styled.p`
   color: #64748b;
   line-height: 1.5;
   margin: 0;
+  text-align: center;
 `;
 
 export const Input = styled.input`
