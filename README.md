@@ -164,6 +164,14 @@ Build the production Docker image:
 docker build --target production -t munkitop .
 ```
 
+Package an installed macOS app into a `.pkg` helper:
+
+```bash
+./pkg.sh "Application Name"
+```
+
+`pkg.sh` expects `/Applications/Application Name.app`, creates `Application Name.pkg`, prints its SHA-256 hash, bundle identifier and version, and copies the app icon as `.icns`.
+
 ## License
 
 This project is open source. Add or update the license file before publishing if you need a specific license.
