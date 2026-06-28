@@ -6,11 +6,14 @@ use App\Models\Group;
 use App\Models\MobileconfigShare;
 use App\Models\Person;
 use App\Services\MunkiExternalUrl;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class MunkiProfileController extends Controller
 {
@@ -48,7 +51,24 @@ class MunkiProfileController extends Controller
         return $this->share($request, Person::class, $person->getKey());
     }
 
-    public function shared(MobileconfigShare $share): Response
+    public function shared(MobileconfigShare $share): View
+    {
+        $payload = $this->sharedPayload($share);
+
+        return view('mobileconfig-share', [
+            'clientDownloadUrl' => $this->munkiClientDownloadUrl(),
+            'downloadUrl' => route('mobileconfig.shared.download', $share),
+            'fileName' => $payload['fileName'],
+            'profileName' => $payload['profileName'],
+        ]);
+    }
+
+    public function downloadShared(MobileconfigShare $share): Response
+    {
+        return $this->download($this->sharedPayload($share));
+    }
+
+    private function sharedPayload(MobileconfigShare $share): array
     {
         if ($share->expires_at && $share->expires_at->isPast()) {
             abort(404);
@@ -57,14 +77,38 @@ class MunkiProfileController extends Controller
         $target = $share->target;
 
         if ($target instanceof Group) {
-            return $this->download($this->groupPayload($target));
+            return $this->groupPayload($target);
         }
 
         if ($target instanceof Person) {
-            return $this->download($this->personPayload($target));
+            return $this->personPayload($target);
         }
 
         abort(404);
+    }
+
+    private function munkiClientDownloadUrl(): string
+    {
+        return Cache::remember('munki_client_pkg_url', now()->addHour(), function () {
+            $fallbackUrl = 'https://github.com/macadmins/munki-builds/releases';
+
+            try {
+                $release = Http::acceptJson()
+                    ->timeout(4)
+                    ->get('https://api.github.com/repos/macadmins/munki-builds/releases/latest');
+
+                if (! $release->ok()) {
+                    return $fallbackUrl;
+                }
+
+                $asset = collect($release->json('assets', []))
+                    ->first(fn (array $asset) => str_ends_with(strtolower($asset['name'] ?? ''), '.pkg'));
+
+                return $asset['browser_download_url'] ?? $fallbackUrl;
+            } catch (\Throwable) {
+                return $fallbackUrl;
+            }
+        });
     }
 
     private function preview(array $payload): JsonResponse
@@ -114,7 +158,7 @@ class MunkiProfileController extends Controller
     private function groupPayload(Group $group): array
     {
         return $this->payload(
-            profileName: "Munki - {$group->name}",
+            profileName: $group->name,
             identifierSuffix: $group->slug,
             clientIdentifier: $group->slug,
             fileName: "munki-{$group->slug}.mobileconfig",
@@ -124,14 +168,14 @@ class MunkiProfileController extends Controller
 
     private function personPayload(Person $person): array
     {
-        $displayName = trim("{$person->first_name} {$person->name}");
+        $displayName = trim("{$person->first_name} {$person->name}") ?: $person->client_identifier;
         $safeName = Str::of($person->client_identifier)
             ->replaceMatches('/[^A-Za-z0-9._-]+/', '-')
             ->trim('-')
             ->value();
 
         return $this->payload(
-            profileName: "Munki - {$displayName}",
+            profileName: $displayName,
             identifierSuffix: $safeName,
             clientIdentifier: $person->client_identifier,
             fileName: "munki-{$safeName}.mobileconfig",

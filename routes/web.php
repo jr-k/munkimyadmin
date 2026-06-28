@@ -26,6 +26,7 @@ Route::get('/repo/{path}', [MunkiRepoController::class, 'show'])
     ->where('path', '.*')
     ->name('repo.show');
 Route::get('/m/{share}', [MunkiProfileController::class, 'shared'])->name('mobileconfig.shared');
+Route::get('/m/{share}/download', [MunkiProfileController::class, 'downloadShared'])->name('mobileconfig.shared.download');
 
 Route::middleware('admin')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');

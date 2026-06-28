@@ -20,9 +20,10 @@ if [ "${APP_ENV:-production}" != "local" ]; then
   fi
 
   php artisan config:cache --no-ansi
-  php artisan migrate --force --no-ansi
   php artisan route:cache --no-ansi
   php artisan view:cache --no-ansi
 fi
+
+php artisan migrate --force --no-ansi
 
 exec "$@"

@@ -4,10 +4,14 @@ import { Link } from '@inertiajs/react';
 export const AppLayoutContainer = styled.div`
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 
   @media (max-width: 860px) {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 `;
 
@@ -17,14 +21,15 @@ export const Sidebar = styled.aside`
   display: flex;
   flex-direction: column;
   gap: 28px;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
+  overflow-y: auto;
   padding: 22px;
-  position: sticky;
-  top: 0;
 
   @media (max-width: 860px) {
+    height: auto;
     min-height: auto;
-    position: static;
+    overflow: visible;
   }
 `;
 
@@ -144,8 +149,21 @@ export const Main = styled.main`
   display: flex;
   flex-direction: column;
   gap: 24px;
+  height: 100vh;
+  min-height: 0;
+  overflow-y: auto;
   padding: 28px;
   width: 100%;
+
+  > * {
+    flex: 0 0 auto;
+  }
+
+  @media (max-width: 860px) {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
 
   @media (max-width: 640px) {
     padding: 16px;
