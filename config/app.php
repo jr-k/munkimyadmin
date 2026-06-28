@@ -15,7 +15,19 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
     'display_name' => env('APP_DISPLAY_NAME', env('APP_NAME', 'Laravel')),
-    'version' => env('APP_VERSION', 'dev'),
+    'version' => (static function (): string {
+        $versionFile = base_path('version.txt');
+
+        if (is_readable($versionFile)) {
+            $version = trim((string) file_get_contents($versionFile));
+
+            if ($version !== '') {
+                return ltrim($version, 'v');
+            }
+        }
+
+        return env('APP_VERSION', 'dev');
+    })(),
 
     /*
     |--------------------------------------------------------------------------

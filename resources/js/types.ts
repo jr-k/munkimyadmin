@@ -15,6 +15,7 @@ export type Group = {
     is_system: boolean;
     manifest?: ManifestPreview;
     people_count?: number;
+    people?: Person[];
 };
 
 export type Person = {

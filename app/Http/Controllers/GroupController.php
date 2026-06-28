@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Group;
+use App\Models\Person;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,7 @@ class GroupController extends Controller
     {
         return Inertia::render('Groups', [
             'groups' => Group::query()
+                ->with('people')
                 ->withCount('people')
                 ->orderBy('name')
                 ->get()
@@ -22,14 +24,20 @@ class GroupController extends Controller
                     ...$group->toArray(),
                     'manifest' => $this->manifestPreview($group->slug),
                 ]),
+            'people' => Person::query()
+                ->orderBy('name', 'asc')
+                ->get(),
         ]);
     }
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
         $data = $this->validatedData($request);
+        $personIds = $data['person_ids'] ?? [];
+        unset($data['person_ids']);
 
-        Group::create($data);
+        $group = Group::create($data);
+        $group->people()->sync($personIds);
 
         return back()->with('success', ['key' => 'flash.groupCreated']);
     }
@@ -41,8 +49,11 @@ class GroupController extends Controller
         }
 
         $data = $this->validatedData($request, $group);
+        $personIds = $data['person_ids'] ?? [];
+        unset($data['person_ids']);
 
         $group->update($data);
+        $group->people()->sync($personIds);
 
         return back()->with('success', ['key' => 'flash.groupUpdated']);
     }
@@ -89,6 +100,8 @@ class GroupController extends Controller
                 'regex:/^[A-Za-z0-9._-]+$/',
                 Rule::unique('groups', 'slug')->ignore($group),
             ],
+            'person_ids' => ['array'],
+            'person_ids.*' => ['integer', 'exists:people,id'],
             'notes' => ['nullable', 'string'],
         ]);
     }

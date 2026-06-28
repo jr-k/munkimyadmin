@@ -1,21 +1,33 @@
 import { router, useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ConfirmModal from '../ConfirmModal';
 import FormField from '../FormField';
 import MobileconfigModal from '../MobileconfigModal';
 import TableIcon from '../TableIcon';
 import { useI18n } from '../../i18n';
-import { Group, ManifestPreview } from '../../types';
+import { Group, ManifestPreview, Person } from '../../types';
 import * as S from './styled';
 
 type GroupsManagerProps = {
     groups: Group[];
+    people: Person[];
 };
 
 type SortDirection = 'asc' | 'desc';
 type GroupSortKey = 'name' | 'slug' | 'people_count' | 'notes';
 
-export default function GroupsManager({ groups }: GroupsManagerProps) {
+function slugify(value: string): string {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9._-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+export default function GroupsManager({ groups, people }: GroupsManagerProps) {
     const { t } = useI18n();
     const [createOpen, setCreateOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState<Group | null>(null);
@@ -29,14 +41,22 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
     });
     const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [createSlugEdited, setCreateSlugEdited] = useState(false);
+    const [editSlugEdited, setEditSlugEdited] = useState(false);
+    const [peopleOpen, setPeopleOpen] = useState(false);
+    const [editPeopleOpen, setEditPeopleOpen] = useState(false);
+    const createPeopleDropdownRef = useRef<HTMLDivElement | null>(null);
+    const editPeopleDropdownRef = useRef<HTMLDivElement | null>(null);
     const form = useForm({
         name: '',
         slug: '',
+        person_ids: [] as number[],
         notes: '',
     });
     const editForm = useForm({
         name: '',
         slug: '',
+        person_ids: [] as number[],
         notes: '',
     });
 
@@ -45,25 +65,91 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
         form.post('/groups', {
             onSuccess: () => {
                 form.reset();
+                setCreateSlugEdited(false);
+                setPeopleOpen(false);
                 setCreateOpen(false);
             },
         });
     }
 
+    function closeCreateModal() {
+        setCreateOpen(false);
+        setPeopleOpen(false);
+        form.clearErrors();
+        form.reset();
+        setCreateSlugEdited(false);
+    }
+
+    function updateCreateName(name: string) {
+        form.setData({
+            ...form.data,
+            name,
+            slug: createSlugEdited ? form.data.slug : slugify(name),
+        });
+    }
+
+    function updateCreateSlug(slug: string) {
+        setCreateSlugEdited(true);
+        form.setData('slug', slug);
+    }
+
+    function personLabel(person: Person) {
+        return [person.first_name, person.name].filter(Boolean).join(' ');
+    }
+
+    const selectedPeople = people.filter((person) => form.data.person_ids.includes(person.id));
+    const selectedEditPeople = people.filter((person) => editForm.data.person_ids.includes(person.id));
+
     function openEditModal(group: Group) {
         setGroupToEdit(group);
+        setEditSlugEdited(false);
+        setEditPeopleOpen(false);
         editForm.clearErrors();
         editForm.setData({
             name: group.name,
             slug: group.slug,
+            person_ids: group.people?.map((person) => person.id) ?? [],
             notes: group.notes ?? '',
         });
     }
 
     function closeEditModal() {
         setGroupToEdit(null);
+        setEditSlugEdited(false);
+        setEditPeopleOpen(false);
         editForm.clearErrors();
         editForm.reset();
+    }
+
+    function updateEditName(name: string) {
+        editForm.setData({
+            ...editForm.data,
+            name,
+            slug: editSlugEdited ? editForm.data.slug : slugify(name),
+        });
+    }
+
+    function updateEditSlug(slug: string) {
+        setEditSlugEdited(true);
+        editForm.setData('slug', slug);
+    }
+
+    function togglePerson(personId: number) {
+        form.setData(
+            'person_ids',
+            form.data.person_ids.includes(personId)
+                ? form.data.person_ids.filter((selectedId) => selectedId !== personId)
+                : [...form.data.person_ids, personId],
+        );
+    }
+
+    function toggleEditPerson(personId: number) {
+        editForm.setData(
+            'person_ids',
+            editForm.data.person_ids.includes(personId)
+                ? editForm.data.person_ids.filter((selectedId) => selectedId !== personId)
+                : [...editForm.data.person_ids, personId],
+        );
     }
 
     function submitEdit(event: React.FormEvent<HTMLFormElement>) {
@@ -158,18 +244,49 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
                 return;
             }
 
+            if (peopleOpen || editPeopleOpen) {
+                setPeopleOpen(false);
+                setEditPeopleOpen(false);
+                return;
+            }
+
             if (groupToEdit) {
                 closeEditModal();
                 return;
             }
 
-            setCreateOpen(false);
+            closeCreateModal();
         }
 
         window.addEventListener('keydown', closeOnEscape);
 
         return () => window.removeEventListener('keydown', closeOnEscape);
-    }, [createOpen, manifestToView, mobileconfigToView, groupToEdit]);
+    }, [createOpen, manifestToView, mobileconfigToView, groupToEdit, peopleOpen, editPeopleOpen]);
+
+    useEffect(() => {
+        if (!peopleOpen && !editPeopleOpen) {
+            return;
+        }
+
+        function closeOnOutsideClick(event: MouseEvent) {
+            const target = event.target;
+
+            if (!(target instanceof Node)) {
+                return;
+            }
+
+            if (createPeopleDropdownRef.current?.contains(target) || editPeopleDropdownRef.current?.contains(target)) {
+                return;
+            }
+
+            setPeopleOpen(false);
+            setEditPeopleOpen(false);
+        }
+
+        document.addEventListener('mousedown', closeOnOutsideClick);
+
+        return () => document.removeEventListener('mousedown', closeOnOutsideClick);
+    }, [peopleOpen, editPeopleOpen]);
 
     return (
         <S.GroupsManagerContainer>
@@ -187,7 +304,7 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
                 <S.ModalOverlay
                     onMouseDown={(event) => {
                         if (event.target === event.currentTarget) {
-                            setCreateOpen(false);
+                            closeCreateModal();
                         }
                     }}
                 >
@@ -197,21 +314,61 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
                                 <S.ModalTitle>{t('groups.addTitle')}</S.ModalTitle>
                                 <S.ModalDescription>{t('groups.addDescription')}</S.ModalDescription>
                             </div>
-                            <S.IconButton type="button" onClick={() => setCreateOpen(false)} aria-label={t('common.close')}>
+                            <S.IconButton type="button" onClick={closeCreateModal} aria-label={t('common.close')}>
                                 ×
                             </S.IconButton>
                         </S.ModalHeader>
                         <S.Form onSubmit={submit}>
                             <FormField label={t('groups.name')} error={form.errors.name}>
-                                <S.Input value={form.data.name} onChange={(event) => form.setData('name', event.target.value)} />
+                                <S.Input value={form.data.name} onChange={(event) => updateCreateName(event.target.value)} />
                             </FormField>
                             <FormField label={t('groups.slug')} error={form.errors.slug}>
                                 <S.Input
                                     value={form.data.slug}
-                                    onChange={(event) => form.setData('slug', event.target.value)}
+                                    onChange={(event) => updateCreateSlug(event.target.value)}
                                     placeholder="team-dev"
                                 />
                             </FormField>
+                            <S.Full>
+                                <FormField label={t('groups.people')} error={form.errors.person_ids}>
+                                    <S.ChipDropdown ref={createPeopleDropdownRef}>
+                                        <S.ChipTrigger type="button" onClick={() => setPeopleOpen((open) => !open)}>
+                                            {selectedPeople.length === 0 ? (
+                                                <S.Placeholder>{t('groups.choosePeople')}</S.Placeholder>
+                                            ) : (
+                                                <S.ChipList>
+                                                    {selectedPeople.map((person) => (
+                                                        <S.Chip key={person.id}>{personLabel(person)}</S.Chip>
+                                                    ))}
+                                                </S.ChipList>
+                                            )}
+                                            <S.Caret aria-hidden="true">▾</S.Caret>
+                                        </S.ChipTrigger>
+                                        {peopleOpen ? (
+                                            <S.DropdownMenu>
+                                                {people.map((person) => {
+                                                    const selected = form.data.person_ids.includes(person.id);
+
+                                                    return (
+                                                        <S.DropdownOption
+                                                            key={person.id}
+                                                            type="button"
+                                                            $selected={selected}
+                                                            onClick={() => togglePerson(person.id)}
+                                                        >
+                                                            <span>
+                                                                <S.OptionLabel>{personLabel(person)}</S.OptionLabel>
+                                                                <S.OptionEyebrow>{person.email}</S.OptionEyebrow>
+                                                            </span>
+                                                            {selected ? <span aria-hidden="true">✓</span> : null}
+                                                        </S.DropdownOption>
+                                                    );
+                                                })}
+                                            </S.DropdownMenu>
+                                        ) : null}
+                                    </S.ChipDropdown>
+                                </FormField>
+                            </S.Full>
                             <S.Full>
                                 <FormField label={t('groups.notes')} error={form.errors.notes}>
                                     <S.Textarea
@@ -221,7 +378,7 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
                                 </FormField>
                             </S.Full>
                             <S.ModalActions>
-                                <S.SecondaryButton type="button" onClick={() => setCreateOpen(false)}>
+                                <S.SecondaryButton type="button" onClick={closeCreateModal}>
                                     {t('common.cancel')}
                                 </S.SecondaryButton>
                                 <S.Button type="submit" disabled={form.processing}>
@@ -255,16 +412,56 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
                             <FormField label={t('groups.name')} error={editForm.errors.name}>
                                 <S.Input
                                     value={editForm.data.name}
-                                    onChange={(event) => editForm.setData('name', event.target.value)}
+                                    onChange={(event) => updateEditName(event.target.value)}
                                 />
                             </FormField>
                             <FormField label={t('groups.slug')} error={editForm.errors.slug}>
                                 <S.Input
                                     value={editForm.data.slug}
-                                    onChange={(event) => editForm.setData('slug', event.target.value)}
+                                    onChange={(event) => updateEditSlug(event.target.value)}
                                     placeholder="team-dev"
                                 />
                             </FormField>
+                            <S.Full>
+                                <FormField label={t('groups.people')} error={editForm.errors.person_ids}>
+                                    <S.ChipDropdown ref={editPeopleDropdownRef}>
+                                        <S.ChipTrigger type="button" onClick={() => setEditPeopleOpen((open) => !open)}>
+                                            {selectedEditPeople.length === 0 ? (
+                                                <S.Placeholder>{t('groups.noPeople')}</S.Placeholder>
+                                            ) : (
+                                                <S.ChipList>
+                                                    {selectedEditPeople.map((person) => (
+                                                        <S.Chip key={person.id}>{personLabel(person)}</S.Chip>
+                                                    ))}
+                                                </S.ChipList>
+                                            )}
+                                            <S.Caret aria-hidden="true">▾</S.Caret>
+                                        </S.ChipTrigger>
+                                        {editPeopleOpen ? (
+                                            <S.DropdownMenu>
+                                                {people.map((person) => {
+                                                    const selected = editForm.data.person_ids.includes(person.id);
+
+                                                    return (
+                                                        <S.DropdownOption
+                                                            key={person.id}
+                                                            type="button"
+                                                            $selected={selected}
+                                                            onClick={() => toggleEditPerson(person.id)}
+                                                        >
+                                                            <span>
+                                                                <S.OptionLabel>{personLabel(person)}</S.OptionLabel>
+                                                                <S.OptionEyebrow>{person.email}</S.OptionEyebrow>
+                                                            </span>
+                                                            {selected ? <span aria-hidden="true">✓</span> : null}
+                                                        </S.DropdownOption>
+                                                    );
+                                                })}
+                                            </S.DropdownMenu>
+                                        ) : null}
+                                    </S.ChipDropdown>
+                                </FormField>
+                            </S.Full>
                             <S.Full>
                                 <FormField label={t('groups.notes')} error={editForm.errors.notes}>
                                     <S.Textarea
