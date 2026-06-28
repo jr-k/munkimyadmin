@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/jr-k/munkimyadmin:latest
+    image: ghcr.io/jr-k/munkitop:latest
     build:
       context: .
       target: production
@@ -8,8 +8,8 @@ services:
     ports:
       - "${APP_PORT:-8080}:8000"
     environment:
-      APP_NAME: "Munki My Admin"
-      APP_DISPLAY_NAME: ${APP_DISPLAY_NAME:-Munki My Admin}
+      APP_NAME: "Munkitop"
+      APP_DISPLAY_NAME: ${APP_DISPLAY_NAME:-Munkitop}
       APP_ENV: production
       APP_DEBUG: "false"
       APP_URL: ${APP_URL:-http://localhost:8080}

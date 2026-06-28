@@ -98,7 +98,7 @@ export default function AppLayout({ adminEmail, children }: AppLayoutProps) {
                         </S.LogoutButton>
                     </S.UserFooter>
                     <S.ProjectMeta>
-                        <S.GitHubLink href="https://github.com/jr-k/munkimyadmin" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub">
+                        <S.GitHubLink href="https://github.com/jr-k/munkitop" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub">
                             <svg aria-hidden="true" fill="currentColor" height="17" viewBox="0 0 24 24" width="17">
                                 <path d="M12 2C6.5 2 2 6.6 2 12.2c0 4.5 2.9 8.3 6.8 9.7.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.6 1.1 1.6 1.1.9 1.6 2.4 1.1 2.9.9.1-.7.4-1.1.7-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.8-.1-.3-.4-1.3.1-2.8 0 0 .8-.3 2.8 1.1.8-.2 1.6-.3 2.5-.3s1.7.1 2.5.3c1.9-1.4 2.8-1.1 2.8-1.1.5 1.5.2 2.5.1 2.8.6.8 1 1.7 1 2.8 0 3.9-2.4 4.7-4.6 5 .4.3.7 1 .7 2v3c0 .3.2.6.7.5 4-1.4 6.8-5.2 6.8-9.7C22 6.6 17.5 2 12 2Z" />
                             </svg>

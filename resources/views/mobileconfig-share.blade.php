@@ -252,7 +252,7 @@
     <main>
         <section class="card" aria-labelledby="page-title">
             <div class="hero">
-                <p class="eyebrow">Munki My Admin</p>
+                <p class="eyebrow">Munkitop</p>
                 <h1 id="page-title" data-i18n="title">Installer Munki sur ce Mac</h1>
                 <p class="intro" data-i18n="intro" data-profile="{{ $profileName }}">
                     Deux téléchargements suffisent : l’application cliente Munki, puis le profil de configuration préparé pour {{ $profileName }}.
@@ -299,7 +299,7 @@
         </section>
     </main>
     <script>
-        const STORAGE_KEY = 'munkimyadmin.locale';
+        const STORAGE_KEY = 'munkitop.locale';
         const translations = {
             fr: {
                 documentTitle: 'Installer Munki',

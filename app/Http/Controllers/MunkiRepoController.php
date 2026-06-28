@@ -40,7 +40,7 @@ class MunkiRepoController extends Controller
             ->all();
 
         return implode(PHP_EOL, [
-            'Munki My Admin repository',
+            'Munkitop repository',
             '',
             ...$directories,
         ]);

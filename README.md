@@ -1,10 +1,10 @@
-# Munki My Admin
+# Munkitop
 
-Munki My Admin is a small web console for building and publishing a Munki repository without editing plist files by hand. It manages people, groups, packages and assignments, then exports a static Munki repo that clients can consume directly.
+Munkitop is a small web console for building and publishing a Munki repository without editing plist files by hand. It manages people, groups, packages and assignments, then exports a static Munki repo that clients can consume directly.
 
 <p align="center">
-  <img src="docs/screen1.png" alt="Munki My Admin dashboard" width="49%">
-  <img src="docs/screen2.png" alt="Munki My Admin management view" width="49%">
+  <img src="docs/screen1.png" alt="Munkitop dashboard" width="49%">
+  <img src="docs/screen2.png" alt="Munkitop management view" width="49%">
 </p>
 
 ## Highlights
@@ -110,7 +110,7 @@ Important environment variables:
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `APP_DISPLAY_NAME` | Name displayed in the sidebar and login screen | `Munki My Admin` |
+| `APP_DISPLAY_NAME` | Name displayed in the sidebar and login screen | `Munkitop` |
 | `APP_VERSION` | Version displayed in the sidebar footer | `dev` |
 | `APP_URL` | Base application URL used to build repository URLs | `http://localhost:8000` |
 | `ADMIN_EMAIL` | Admin login email | `admin@example.com` |
@@ -142,7 +142,7 @@ Optional production variables:
 
 ```text
 APP_PORT=8080
-APP_DISPLAY_NAME="Munki My Admin"
+APP_DISPLAY_NAME="Munkitop"
 APP_VERSION=dev
 MUNKI_DEFAULT_CATALOG=production
 MUNKI_BASE_MANIFEST=base
@@ -161,7 +161,7 @@ npm run build
 Build the production Docker image:
 
 ```bash
-docker build --target production -t munkimyadmin .
+docker build --target production -t munkitop .
 ```
 
 ## License

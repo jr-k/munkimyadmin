@@ -8,7 +8,7 @@ type I18nContextValue = {
     t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 };
 
-const STORAGE_KEY = 'munkimyadmin.locale';
+const STORAGE_KEY = 'munkitop.locale';
 
 const translations = {
     en: {
@@ -200,7 +200,7 @@ const translations = {
         'munki.stepInstallText': 'Download and install the Munki client app, then install the mobileconfig on the Mac. Munki will then use the matching manifest automatically:',
         'munki.clientDownloadLink': 'Munki client releases',
         'munki.externalUrlTitle': 'External URL',
-        'munki.externalUrlHelp': 'By default, Munki My Admin uses the default URL ({defaultUrl}) to build the client repository URL.',
+        'munki.externalUrlHelp': 'By default, Munkitop uses the default URL ({defaultUrl}) to build the client repository URL.',
         'munki.overrideExternalUrl': 'Override external URL',
         'munki.overrideExternalUrlHelp': 'Use this when clients must reach the repo through another host, domain, or tunnel.',
         'munki.externalUrlLabel': 'External application URL',
@@ -449,7 +449,7 @@ const translations = {
         'munki.stepInstallText': 'Télécharge et installe l’application cliente Munki, puis installe le mobileconfig sur le Mac. Munki utilisera ensuite automatiquement le manifest correspondant :',
         'munki.clientDownloadLink': 'releases du client Munki',
         'munki.externalUrlTitle': 'URL externe',
-        'munki.externalUrlHelp': 'Par défaut, Munki My Admin utilise l’URL par défaut ({defaultUrl}) pour construire l’URL du repo client.',
+        'munki.externalUrlHelp': 'Par défaut, Munkitop utilise l’URL par défaut ({defaultUrl}) pour construire l’URL du repo client.',
         'munki.overrideExternalUrl': 'Override l’URL externe',
         'munki.overrideExternalUrlHelp': 'À utiliser si les clients accèdent au repo via un autre host, domaine ou tunnel.',
         'munki.externalUrlLabel': 'URL externe de l’application',

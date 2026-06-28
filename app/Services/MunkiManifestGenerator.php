@@ -114,9 +114,9 @@ class MunkiManifestGenerator
         File::put($repoPath.'/index.html', implode(PHP_EOL, [
             '<!doctype html>',
             '<html lang="en">',
-            '<head><meta charset="utf-8"><title>Munki My Admin Repository</title></head>',
+            '<head><meta charset="utf-8"><title>Munkitop Repository</title></head>',
             '<body>',
-            '<h1>Munki My Admin Repository</h1>',
+            '<h1>Munkitop Repository</h1>',
             '<ul>',
             '<li><a href="catalogs/'.config('munki.default_catalog').'">catalogs/'.config('munki.default_catalog').'</a></li>',
             '<li><a href="catalogs/all">catalogs/all</a></li>',

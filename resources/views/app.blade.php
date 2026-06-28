@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="apple-touch-icon" href="/apple-touch-icon.svg">
-    <title inertia>{{ config('app.name', 'Munki My Admin') }}</title>
+    <title inertia>{{ config('app.name', 'Munkitop') }}</title>
     @viteReactRefresh
     @vite(['resources/js/app.tsx'])
     @inertiaHead
