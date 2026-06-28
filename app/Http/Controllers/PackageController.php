@@ -132,7 +132,7 @@ class PackageController extends Controller
             'bundle_identifier' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9.-]+$/'],
             'version' => ['nullable', 'string', 'max:255'],
             'icon' => ['nullable', 'file', 'max:4096'],
-            'pkg_file' => ['nullable', 'file', 'max:5242880'],
+            'pkg_file' => ['nullable', 'file', 'max:5242880', 'extensions:pkg,dmg'],
             'hash' => [
                 Rule::requiredIf(! $request->hasFile('pkg_file') && ! $package?->hash),
                 'nullable',
@@ -146,10 +146,16 @@ class PackageController extends Controller
 
     private function storeUploadedPackage(UploadedFile $file, array $data): array
     {
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if (! in_array($extension, ['pkg', 'dmg'], true)) {
+            $extension = 'pkg';
+        }
+
         $fileName = Str::of($data['munki_name'])
             ->replaceMatches('/[^A-Za-z0-9._-]+/', '-')
             ->trim('-')
-            ->append('.pkg')
+            ->append('.'.$extension)
             ->value();
 
         $path = $file->storeAs('packages', $fileName);

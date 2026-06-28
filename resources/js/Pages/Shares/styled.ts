@@ -151,9 +151,22 @@ export const SortButton = styled.button`
   }
 `;
 
-export const LinkText = styled.a`
-  color: #2563eb;
-  font-weight: 800;
+export const LinkField = styled.div`
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 320px;
+`;
+
+export const LinkInput = styled.input`
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  color: #0f172a;
+  flex: 1;
+  font: inherit;
+  min-width: 0;
+  padding: 9px 12px;
 `;
 
 export const Badge = styled.span<{ $expired: boolean }>`
@@ -163,6 +176,11 @@ export const Badge = styled.span<{ $expired: boolean }>`
   font-size: 12px;
   font-weight: 800;
   padding: 4px 8px;
+`;
+
+export const DateText = styled.span`
+  color: #64748b;
+  font-size: 12px;
 `;
 
 export const RowActions = styled.div`
@@ -298,4 +316,18 @@ export const ModalActions = styled.div`
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+`;
+
+export const Toast = styled.div`
+  background: #0f172a;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 14px;
+  bottom: 24px;
+  box-shadow: 0 18px 40px rgb(15 23 42 / 28%);
+  color: #ffffff;
+  font-weight: 800;
+  padding: 12px 14px;
+  position: fixed;
+  right: 24px;
+  z-index: 120;
 `;

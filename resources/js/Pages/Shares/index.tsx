@@ -1,5 +1,5 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AppLayout from '../../Components/AppLayout';
 import ConfirmModal from '../../Components/ConfirmModal';
 import FlashMessage from '../../Components/FlashMessage';
@@ -24,6 +24,7 @@ export default function Shares({ shares }: SharesPageProps) {
     const [shareToDelete, setShareToDelete] = useState<MobileconfigShare | null>(null);
     const [selectedShareIds, setSelectedShareIds] = useState<number[]>([]);
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [copiedShareId, setCopiedShareId] = useState<number | null>(null);
     const [sort, setSort] = useState<{ key: LinkSortKey; direction: SortDirection }>({
         key: 'created_at',
         direction: 'desc',
@@ -147,6 +148,22 @@ export default function Shares({ shares }: SharesPageProps) {
         });
     }
 
+    function copyLink(url: string, shareId: number) {
+        void navigator.clipboard?.writeText(url).then(() => {
+            setCopiedShareId(shareId);
+        });
+    }
+
+    useEffect(() => {
+        if (copiedShareId === null) {
+            return;
+        }
+
+        const timeout = window.setTimeout(() => setCopiedShareId(null), 2400);
+
+        return () => window.clearTimeout(timeout);
+    }, [copiedShareId]);
+
     return (
         <>
             <Head title={t('common.links')} />
@@ -254,9 +271,22 @@ export default function Shares({ shares }: SharesPageProps) {
                                                 <S.CodePill>{share.ulid}</S.CodePill>
                                             </td>
                                             <td>
-                                                <S.LinkText href={share.url} target="_blank" rel="noreferrer">
-                                                    {share.url}
-                                                </S.LinkText>
+                                                <S.LinkField>
+                                                    <S.LinkInput
+                                                        value={share.url}
+                                                        readOnly
+                                                        aria-label={t('shares.link')}
+                                                        onFocus={(event) => event.target.select()}
+                                                    />
+                                                    <S.TableIconButton
+                                                        type="button"
+                                                        aria-label={t('mobileconfig.copyLink')}
+                                                        title={copiedShareId === share.id ? t('mobileconfig.copied') : t('mobileconfig.copyLink')}
+                                                        onClick={() => copyLink(share.url, share.id)}
+                                                    >
+                                                        <TableIcon name="copy" />
+                                                    </S.TableIconButton>
+                                                </S.LinkField>
                                             </td>
                                             <td>
                                                 <strong>{share.target.name ?? '-'}</strong>
@@ -264,8 +294,12 @@ export default function Shares({ shares }: SharesPageProps) {
                                                 <S.CodePill>{share.target.identifier ?? '-'}</S.CodePill>
                                             </td>
                                             <td>{share.target.type === 'group' ? t('common.group') : t('common.person')}</td>
-                                            <td>{formatDate(share.created_at)}</td>
-                                            <td>{formatDate(share.expires_at)}</td>
+                                            <td>
+                                                <S.DateText>{formatDate(share.created_at)}</S.DateText>
+                                            </td>
+                                            <td>
+                                                <S.DateText>{formatDate(share.expires_at)}</S.DateText>
+                                            </td>
                                             <td>
                                                 <S.Badge $expired={share.expired}>
                                                     {share.expired ? t('shares.expired') : t('shares.active')}
@@ -371,6 +405,7 @@ export default function Shares({ shares }: SharesPageProps) {
                         });
                     }}
                 />
+                {copiedShareId !== null ? <S.Toast role="status">{t('mobileconfig.copied')}</S.Toast> : null}
             </AppLayout>
         </>
     );

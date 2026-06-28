@@ -1,9 +1,15 @@
 type TableIconProps = {
-    name: 'delete' | 'download' | 'edit' | 'manifest';
+    name: 'copy' | 'delete' | 'download' | 'edit' | 'manifest';
 };
 
 export default function TableIcon({ name }: TableIconProps) {
     const paths = {
+        copy: (
+            <>
+                <path d="M8 8h10v13H8V8Z" />
+                <path d="M6 16H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </>
+        ),
         delete: (
             <>
                 <path d="M9 3h6l1 2h4v2H4V5h4l1-2Z" />

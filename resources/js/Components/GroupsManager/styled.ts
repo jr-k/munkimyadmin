@@ -290,6 +290,11 @@ export const CodePill = styled.code`
   padding: 4px 8px;
 `;
 
+export const NotesText = styled.span`
+  color: #64748b;
+  font-size: 12px;
+`;
+
 export const EmptyCell = styled.td`
   color: #64748b;
   text-align: center !important;

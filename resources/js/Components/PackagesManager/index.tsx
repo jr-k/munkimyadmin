@@ -409,7 +409,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                             <FormField label={t('packages.pkgFile')} error={form.errors.pkg_file}>
                                 <S.Input
                                     type="file"
-                                    accept=".pkg"
+                                    accept=".pkg,.dmg"
                                     onChange={(event) => form.setData('pkg_file', event.target.files?.[0] ?? null)}
                                 />
                             </FormField>
@@ -537,7 +537,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                     <FormField label={t('packages.pkgFile')} error={editForm.errors.pkg_file}>
                                         <S.Input
                                             type="file"
-                                            accept=".pkg"
+                                            accept=".pkg,.dmg"
                                             onChange={(event) => editForm.setData('pkg_file', event.target.files?.[0] ?? null)}
                                         />
                                     </FormField>

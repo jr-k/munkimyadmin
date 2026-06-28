@@ -567,7 +567,9 @@ export default function GroupsManager({ groups, people }: GroupsManagerProps) {
                                         <S.CodePill>{group.slug}</S.CodePill>
                                     </td>
                                     <td>{group.people_count ?? 0}</td>
-                                    <td>{group.notes ?? '-'}</td>
+                                    <td>
+                                        <S.NotesText>{group.notes ?? '-'}</S.NotesText>
+                                    </td>
                                     <td>
                                         {group.manifest ? (
                                             <S.TableIconButton

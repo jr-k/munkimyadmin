@@ -130,9 +130,10 @@ class MunkiManifestGenerator
     private function writePackageInfo(string $pkginfoPath, string $iconPath, string $packagePath, Package $package): array
     {
         $installerItemLocation = $package->pkg_url;
+        $packageExtension = $this->packageExtension($package);
 
         if ($package->pkg_path) {
-            $packageFileName = $this->safeFileName($package->munki_name).'.pkg';
+            $packageFileName = $this->safeFileName($package->munki_name).'.'.$packageExtension;
             $storedPackagePath = Storage::disk('local')->path($package->pkg_path);
 
             if (File::exists($storedPackagePath)) {
@@ -144,11 +145,18 @@ class MunkiManifestGenerator
         $pkginfo = [
             'name' => $package->munki_name,
             'display_name' => $package->display_name,
-            'installer_type' => 'package',
+            'installer_type' => $packageExtension === 'dmg' ? 'copy_from_dmg' : 'package',
             'installer_item_location' => $installerItemLocation,
             'installer_item_hash' => $package->hash,
             'unattended_install' => true,
         ];
+
+        if ($packageExtension === 'dmg') {
+            $pkginfo['items_to_copy'] = [[
+                'source_item' => $this->appBundleName($package),
+                'destination_path' => '/Applications',
+            ]];
+        }
 
         if ($package->version) {
             $pkginfo['version'] = $package->version;
@@ -283,6 +291,21 @@ class MunkiManifestGenerator
         $path = (string) config('munki.repo_path');
 
         return Str::startsWith($path, '/') ? $path : base_path($path);
+    }
+
+    private function packageExtension(Package $package): string
+    {
+        $path = $package->pkg_path ?: (string) parse_url((string) $package->pkg_url, PHP_URL_PATH);
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        return $extension === 'dmg' ? 'dmg' : 'pkg';
+    }
+
+    private function appBundleName(Package $package): string
+    {
+        $displayName = trim($package->display_name);
+
+        return Str::endsWith(strtolower($displayName), '.app') ? $displayName : $displayName.'.app';
     }
 
     private function safeFileName(string $name): string
