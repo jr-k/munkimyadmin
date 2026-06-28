@@ -22,6 +22,7 @@ RUN apk add --no-cache \
     nodejs \
     npm \
     oniguruma-dev \
+    su-exec \
     sqlite-libs \
     zip \
   && apk add --no-cache --virtual .build-deps \
@@ -72,8 +73,8 @@ COPY --from=composer_deps /var/www/html/vendor ./vendor
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
-RUN composer dump-autoload --optimize --no-dev \
+RUN mkdir -p storage/app/munki_repo \
+  && composer dump-autoload --optimize --no-dev \
   && chown -R www-data:www-data storage bootstrap/cache database
 
-USER www-data
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

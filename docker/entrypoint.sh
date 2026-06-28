@@ -1,8 +1,17 @@
 #!/usr/bin/env sh
 set -eu
 
+run_as_app_user() {
+  if [ "$(id -u)" = "0" ]; then
+    su-exec www-data "$@"
+  else
+    "$@"
+  fi
+}
+
 mkdir -p \
   storage/app \
+  storage/app/munki_repo \
   storage/framework/cache \
   storage/framework/sessions \
   storage/framework/views \
@@ -19,17 +28,29 @@ if [ "${DB_CONNECTION:-sqlite}" = "sqlite" ]; then
   fi
 fi
 
+if [ "$(id -u)" = "0" ]; then
+  chown -R www-data:www-data storage bootstrap/cache
+
+  if [ "${DB_CONNECTION:-sqlite}" = "sqlite" ]; then
+    chown -R www-data:www-data "$(dirname "$SQLITE_DATABASE")"
+  fi
+fi
+
 if [ "${APP_ENV:-production}" != "local" ]; then
   if [ -z "${APP_KEY:-}" ]; then
     echo "APP_KEY must be set in production." >&2
     exit 1
   fi
 
-  php artisan config:cache --no-ansi
-  php artisan route:cache --no-ansi
-  php artisan view:cache --no-ansi
+  run_as_app_user php artisan config:cache --no-ansi
+  run_as_app_user php artisan route:cache --no-ansi
+  run_as_app_user php artisan view:cache --no-ansi
 fi
 
-php artisan migrate --force --no-ansi
+run_as_app_user php artisan migrate --force --no-ansi
+
+if [ "$(id -u)" = "0" ]; then
+  exec su-exec www-data "$@"
+fi
 
 exec "$@"
