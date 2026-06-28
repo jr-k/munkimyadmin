@@ -145,13 +145,13 @@ class MunkiManifestGenerator
         $pkginfo = [
             'name' => $package->munki_name,
             'display_name' => $package->display_name,
-            'installer_type' => $packageExtension === 'dmg' ? 'copy_from_dmg' : 'package',
             'installer_item_location' => $installerItemLocation,
             'installer_item_hash' => $package->hash,
             'unattended_install' => true,
         ];
 
         if ($packageExtension === 'dmg') {
+            $pkginfo['installer_type'] = 'copy_from_dmg';
             $pkginfo['items_to_copy'] = [[
                 'source_item' => $this->appBundleName($package),
                 'destination_path' => '/Applications',
