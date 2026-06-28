@@ -144,9 +144,7 @@ class PackageController extends Controller
         $data['pkg_path'] = $path;
         $data['pkg_url'] = null;
 
-        if (empty($data['hash'])) {
-            $data['hash'] = hash_file('sha256', Storage::disk('local')->path($path));
-        }
+        $data['hash'] = hash_file('sha256', Storage::disk('local')->path($path));
 
         return $data;
     }
