@@ -11,25 +11,15 @@ Munkitop is a small web console for building and publishing a Munki repository w
 
 - Manage people with Munki `ClientIdentifier` values based on email.
 - Organize people into groups that become Munki manifests.
-- Import local `.pkg` files or reference remote package URLs.
+- Import local `.pkg` or `.dmg` files, or reference remote package URLs.
 - Track package metadata such as Munki name, display name, bundle identifier, version, SHA-256 hash and `.icns` icon.
 - Assign packages to people or groups as install or uninstall actions.
 - Bulk select and delete people, groups, packages and assignments with confirmation.
 - Generate Munki `catalogs`, `manifests`, `pkgsinfo`, `pkgs` and `icons`.
-- Download `.mobileconfig` profiles for people and groups.
+- Preview, download and share `.mobileconfig` profiles for people and groups.
 - Configure the external Munki repository URL from the app.
 - Switch the UI between English and French, with browser language detection.
 
-## Screenshots
-
-Place the application screenshots at:
-
-```text
-docs/screen1.png
-docs/screen2.png
-```
-
-The README already references both files, so they will appear automatically on GitHub once the images are added.
 
 ## Tech Stack
 
@@ -55,12 +45,6 @@ The app will be available at:
 http://localhost:8000
 ```
 
-Vite runs inside the same container and is exposed on:
-
-```text
-http://localhost:5173
-```
-
 Default local credentials from `.env`:
 
 ```text
@@ -68,26 +52,14 @@ admin@example.com
 password
 ```
 
-Run migrations manually if needed:
-
-```bash
-docker compose exec app php artisan migrate
-```
-
-Install or refresh frontend dependencies inside the container:
-
-```bash
-docker compose exec app npm install
-```
-
 ## Munki Workflow
 
 1. Add people and groups.
-2. Add packages with either a local `.pkg` upload or a remote package URL.
+2. Add packages with a local `.pkg` or `.dmg` upload, or a remote package URL.
 3. Assign packages to people or groups.
 4. Open the Export view and generate the Munki repo.
 5. Point Munki clients to the effective repository URL shown in the app.
-6. Use the generated `.mobileconfig` profile for each person or group when needed.
+6. Use the generated `.mobileconfig` profile for each person or group when needed, or create a share link for end users.
 
 The exported repo is written to `MUNKI_REPO_PATH`, which defaults to:
 
@@ -111,7 +83,6 @@ Important environment variables:
 | Variable | Description | Default |
 | --- | --- | --- |
 | `APP_DISPLAY_NAME` | Name displayed in the sidebar and login screen | `Munkitop` |
-| `APP_VERSION` | Version displayed in the sidebar footer | `dev` |
 | `APP_URL` | Base application URL used to build repository URLs | `http://localhost:8000` |
 | `ADMIN_EMAIL` | Admin login email | `admin@example.com` |
 | `ADMIN_PASSWORD` | Admin login password | `password` |
@@ -121,57 +92,16 @@ Important environment variables:
 
 The external client-facing URL can also be overridden from the Export page.
 
-## Production
+## Package Helper
 
-Build and run the production compose file:
-
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
-
-Required production environment variables:
-
-```text
-APP_KEY=base64:...
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=change-me
-APP_URL=https://your-domain.example
-```
-
-Optional production variables:
-
-```text
-APP_PORT=8080
-APP_DISPLAY_NAME="Munkitop"
-APP_VERSION=dev
-MUNKI_DEFAULT_CATALOG=production
-MUNKI_BASE_MANIFEST=base
-```
-
-The production compose file persists SQLite, Laravel storage and the Munki repository with named Docker volumes.
-
-## Build
-
-Build frontend assets locally:
-
-```bash
-npm run build
-```
-
-Build the production Docker image:
-
-```bash
-docker build --target production -t munkitop .
-```
-
-Package an installed macOS app into a `.pkg` helper:
+`pkg.sh` is a small macOS helper for turning an app already installed in `/Applications` into a Munki-ready `.pkg`.
 
 ```bash
 ./pkg.sh "Application Name"
 ```
 
-`pkg.sh` expects `/Applications/Application Name.app`, creates `Application Name.pkg`, prints its SHA-256 hash, bundle identifier and version, and copies the app icon as `.icns`.
+It expects `/Applications/Application Name.app`, creates `Application Name.pkg`, prints the SHA-256 hash, bundle identifier and version, then copies the app icon next to the package as `Application Name.icns`.
 
 ## License
 
-This project is open source. Add or update the license file before publishing if you need a specific license.
+Munkitop is released under the Apache License 2.0. See `LICENSE.md`.
