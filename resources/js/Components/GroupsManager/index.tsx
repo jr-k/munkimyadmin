@@ -11,6 +11,9 @@ type GroupsManagerProps = {
     groups: Group[];
 };
 
+type SortDirection = 'asc' | 'desc';
+type GroupSortKey = 'name' | 'slug' | 'people_count' | 'notes';
+
 export default function GroupsManager({ groups }: GroupsManagerProps) {
     const { t } = useI18n();
     const [createOpen, setCreateOpen] = useState(false);
@@ -18,6 +21,12 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
     const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
     const [search, setSearch] = useState('');
     const [manifestToView, setManifestToView] = useState<{ title: string; manifest: ManifestPreview } | null>(null);
+    const [sort, setSort] = useState<{ key: GroupSortKey; direction: SortDirection }>({
+        key: 'name',
+        direction: 'asc',
+    });
+    const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
     const form = useForm({
         name: '',
         slug: '',
@@ -68,9 +77,64 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
     }
 
     const normalizedSearch = search.trim().toLowerCase();
-    const filteredGroups = groups.filter((group) =>
-        [group.name, group.slug, group.notes ?? ''].join(' ').toLowerCase().includes(normalizedSearch),
-    );
+    const filteredGroups = groups
+        .filter((group) =>
+            [group.name, group.slug, group.notes ?? ''].join(' ').toLowerCase().includes(normalizedSearch),
+        )
+        .sort((firstGroup, secondGroup) => {
+            const comparison = String(sortValue(firstGroup, sort.key)).localeCompare(
+                String(sortValue(secondGroup, sort.key)),
+                undefined,
+                { numeric: true, sensitivity: 'base' },
+            );
+
+            if (comparison !== 0) {
+                return sort.direction === 'asc' ? comparison : -comparison;
+            }
+
+            return firstGroup.name.localeCompare(secondGroup.name, undefined, { sensitivity: 'base' });
+        });
+
+    function sortValue(group: Group, key: GroupSortKey) {
+        return group[key] ?? '';
+    }
+
+    function changeSort(key: GroupSortKey) {
+        setSort((current) => ({
+            key,
+            direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+        }));
+    }
+
+    function sortIndicator(key: GroupSortKey) {
+        if (sort.key !== key) {
+            return '';
+        }
+
+        return sort.direction === 'asc' ? ' ↑' : ' ↓';
+    }
+
+    const visibleGroupIds = filteredGroups.filter((group) => !group.is_system).map((group) => group.id);
+    const allVisibleGroupsSelected = visibleGroupIds.length > 0
+        && visibleGroupIds.every((id) => selectedGroupIds.includes(id));
+
+    function toggleGroupSelection(groupId: number) {
+        setSelectedGroupIds((current) =>
+            current.includes(groupId)
+                ? current.filter((id) => id !== groupId)
+                : [...current, groupId],
+        );
+    }
+
+    function toggleVisibleGroupsSelection() {
+        setSelectedGroupIds((current) => {
+            if (allVisibleGroupsSelected) {
+                return current.filter((id) => !visibleGroupIds.includes(id));
+            }
+
+            return Array.from(new Set([...current, ...visibleGroupIds]));
+        });
+    }
 
     useEffect(() => {
         if (!createOpen && !manifestToView && !groupToEdit) {
@@ -220,24 +284,55 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
                     <S.FilterTitle>{t('groups.listTitle')}</S.FilterTitle>
                     <S.FilterMeta>{t('people.displayed', { count: filteredGroups.length })}</S.FilterMeta>
                 </div>
-                <S.FilterControl>
-                    <span>{t('common.search')}</span>
-                    <S.FilterInput
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder={t('groups.searchPlaceholder')}
-                    />
-                </S.FilterControl>
+                <S.FilterControls>
+                    {selectedGroupIds.length > 0 ? (
+                        <S.DangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
+                            {t('common.bulkDelete', { count: selectedGroupIds.length })}
+                        </S.DangerButton>
+                    ) : null}
+                    <S.FilterControl>
+                        <span>{t('common.search')}</span>
+                        <S.FilterInput
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder={t('groups.searchPlaceholder')}
+                        />
+                    </S.FilterControl>
+                </S.FilterControls>
             </S.FilterBar>
 
             <S.TableCard>
                 <S.Table>
                     <thead>
                         <tr>
-                            <th>{t('common.groups')}</th>
-                            <th>{t('groups.slug')}</th>
-                            <th>{t('groups.peopleCount')}</th>
-                            <th>{t('groups.notes')}</th>
+                            <th>
+                                <input
+                                    type="checkbox"
+                                    checked={allVisibleGroupsSelected}
+                                    aria-label={t('common.selectAll')}
+                                    onChange={toggleVisibleGroupsSelection}
+                                />
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('name')}>
+                                    {t('common.groups')}{sortIndicator('name')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('slug')}>
+                                    {t('groups.slug')}{sortIndicator('slug')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('people_count')}>
+                                    {t('groups.peopleCount')}{sortIndicator('people_count')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('notes')}>
+                                    {t('groups.notes')}{sortIndicator('notes')}
+                                </S.SortButton>
+                            </th>
                             <th>{t('common.manifest')}</th>
                             <th>{t('common.mobileconfig')}</th>
                             <th>{t('common.actions')}</th>
@@ -246,11 +341,20 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
                     <tbody>
                         {filteredGroups.length === 0 ? (
                             <tr>
-                                <S.EmptyCell colSpan={7}>{t('groups.noMatch')}</S.EmptyCell>
+                                <S.EmptyCell colSpan={8}>{t('groups.noMatch')}</S.EmptyCell>
                             </tr>
                         ) : (
                             filteredGroups.map((group) => (
                                 <tr key={group.id}>
+                                    <td>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedGroupIds.includes(group.id)}
+                                            disabled={group.is_system}
+                                            aria-label={t('common.selectRow')}
+                                            onChange={() => toggleGroupSelection(group.id)}
+                                        />
+                                    </td>
                                     <td>
                                         <S.PrimaryCell>{group.name}</S.PrimaryCell>
                                         {group.is_system ? <S.SystemBadge>{t('groups.system')}</S.SystemBadge> : null}
@@ -372,6 +476,23 @@ export default function GroupsManager({ groups }: GroupsManagerProps) {
 
                     router.delete(`/groups/${groupToDelete.id}`, {
                         onFinish: () => setGroupToDelete(null),
+                    });
+                }}
+            />
+            <ConfirmModal
+                open={bulkDeleteOpen}
+                title={t('groups.bulkDeleteTitle')}
+                description={t('groups.bulkDeleteDescription', { count: selectedGroupIds.length })}
+                requireConfirmationCheckbox
+                confirmationLabel={t('common.confirmBulkDelete')}
+                onClose={() => setBulkDeleteOpen(false)}
+                onConfirm={() => {
+                    router.delete('/groups/bulk', {
+                        data: { ids: selectedGroupIds },
+                        onFinish: () => {
+                            setBulkDeleteOpen(false);
+                            setSelectedGroupIds([]);
+                        },
                     });
                 }}
             />

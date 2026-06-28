@@ -1,5 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ConfirmModal from '../ConfirmModal';
 import FormField from '../FormField';
 import TableIcon from '../TableIcon';
@@ -12,6 +12,9 @@ type PeopleManagerProps = {
     groups: Group[];
 };
 
+type SortDirection = 'asc' | 'desc';
+type PeopleSortKey = 'name' | 'first_name' | 'email' | 'client_identifier' | 'groups';
+
 export default function PeopleManager({ people, groups }: PeopleManagerProps) {
     const { t } = useI18n();
     const [createOpen, setCreateOpen] = useState(false);
@@ -22,6 +25,14 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
     const [manifestToView, setManifestToView] = useState<{ title: string; manifest: ManifestPreview } | null>(null);
     const [personToEdit, setPersonToEdit] = useState<Person | null>(null);
     const [personToDelete, setPersonToDelete] = useState<Person | null>(null);
+    const [sort, setSort] = useState<{ key: PeopleSortKey; direction: SortDirection }>({
+        key: 'email',
+        direction: 'asc',
+    });
+    const [selectedPersonIds, setSelectedPersonIds] = useState<number[]>([]);
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const createGroupsDropdownRef = useRef<HTMLDivElement | null>(null);
+    const editGroupsDropdownRef = useRef<HTMLDivElement | null>(null);
     const form = useForm({
         name: '',
         first_name: '',
@@ -52,18 +63,7 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
     const selectedGroups = selectableGroups.filter((group) => form.data.group_ids.includes(group.id));
     const selectedEditGroups = selectableGroups.filter((group) => editForm.data.group_ids.includes(group.id));
     const normalizedSearch = search.trim().toLowerCase();
-    const peopleByTeam = [...people]
-        .sort((firstPerson, secondPerson) => {
-            const firstTeam = firstPerson.groups.find((group) => !group.is_system)?.name ?? 'zzz';
-            const secondTeam = secondPerson.groups.find((group) => !group.is_system)?.name ?? 'zzz';
-            const teamComparison = firstTeam.localeCompare(secondTeam);
-
-            if (teamComparison !== 0) {
-                return teamComparison;
-            }
-
-            return personLabel(firstPerson).localeCompare(personLabel(secondPerson));
-        })
+    const visiblePeople = people
         .filter((person) => {
             const searchable = [
                 personLabel(person),
@@ -87,10 +87,68 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
             }
 
             return person.groups.some((group) => group.id === Number(selectedTeamId));
+        })
+        .sort((firstPerson, secondPerson) => {
+            const comparison = String(sortValue(firstPerson, sort.key)).localeCompare(
+                String(sortValue(secondPerson, sort.key)),
+                undefined,
+                { numeric: true, sensitivity: 'base' },
+            );
+
+            if (comparison !== 0) {
+                return sort.direction === 'asc' ? comparison : -comparison;
+            }
+
+            return firstPerson.email.localeCompare(secondPerson.email, undefined, { sensitivity: 'base' });
         });
 
     function personLabel(person: Person) {
         return [person.first_name, person.name].filter(Boolean).join(' ');
+    }
+
+    function sortValue(person: Person, key: PeopleSortKey) {
+        if (key === 'groups') {
+            return person.groups.map((group) => group.name).join(' ');
+        }
+
+        return person[key] ?? '';
+    }
+
+    function changeSort(key: PeopleSortKey) {
+        setSort((current) => ({
+            key,
+            direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+        }));
+    }
+
+    function sortIndicator(key: PeopleSortKey) {
+        if (sort.key !== key) {
+            return '';
+        }
+
+        return sort.direction === 'asc' ? ' ↑' : ' ↓';
+    }
+
+    const visiblePersonIds = visiblePeople.map((person) => person.id);
+    const allVisiblePeopleSelected = visiblePersonIds.length > 0
+        && visiblePersonIds.every((id) => selectedPersonIds.includes(id));
+
+    function togglePersonSelection(personId: number) {
+        setSelectedPersonIds((current) =>
+            current.includes(personId)
+                ? current.filter((id) => id !== personId)
+                : [...current, personId],
+        );
+    }
+
+    function toggleVisiblePeopleSelection() {
+        setSelectedPersonIds((current) => {
+            if (allVisiblePeopleSelected) {
+                return current.filter((id) => !visiblePersonIds.includes(id));
+            }
+
+            return Array.from(new Set([...current, ...visiblePersonIds]));
+        });
     }
 
     function openEditModal(person: Person) {
@@ -153,6 +211,12 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                 return;
             }
 
+            if (groupsOpen || editGroupsOpen) {
+                setGroupsOpen(false);
+                setEditGroupsOpen(false);
+                return;
+            }
+
             if (manifestToView) {
                 setManifestToView(null);
                 return;
@@ -170,7 +234,32 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
         window.addEventListener('keydown', closeOnEscape);
 
         return () => window.removeEventListener('keydown', closeOnEscape);
-    }, [createOpen, manifestToView, personToEdit]);
+    }, [createOpen, manifestToView, personToEdit, groupsOpen, editGroupsOpen]);
+
+    useEffect(() => {
+        if (!groupsOpen && !editGroupsOpen) {
+            return;
+        }
+
+        function closeOnOutsideClick(event: MouseEvent) {
+            const target = event.target;
+
+            if (!(target instanceof Node)) {
+                return;
+            }
+
+            if (createGroupsDropdownRef.current?.contains(target) || editGroupsDropdownRef.current?.contains(target)) {
+                return;
+            }
+
+            setGroupsOpen(false);
+            setEditGroupsOpen(false);
+        }
+
+        document.addEventListener('mousedown', closeOnOutsideClick);
+
+        return () => document.removeEventListener('mousedown', closeOnOutsideClick);
+    }, [groupsOpen, editGroupsOpen]);
 
     return (
         <S.PeopleManagerContainer>
@@ -234,7 +323,7 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                                 />
                             </FormField>
                             <FormField label={t('people.optionalGroups')}>
-                                <S.ChipDropdown>
+                                <S.ChipDropdown ref={createGroupsDropdownRef}>
                                     <S.ChipTrigger type="button" onClick={() => setGroupsOpen((open) => !open)}>
                                         {selectedGroups.length === 0 ? (
                                             <S.Placeholder>{t('people.chooseGroups')}</S.Placeholder>
@@ -298,9 +387,14 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
             <S.FilterBar>
                 <div>
                     <S.FilterTitle>{t('people.users')}</S.FilterTitle>
-                    <S.FilterMeta>{t('people.displayed', { count: peopleByTeam.length })}</S.FilterMeta>
+                    <S.FilterMeta>{t('people.displayed', { count: visiblePeople.length })}</S.FilterMeta>
                 </div>
                 <S.FilterControls>
+                    {selectedPersonIds.length > 0 ? (
+                        <S.DangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
+                            {t('common.bulkDelete', { count: selectedPersonIds.length })}
+                        </S.DangerButton>
+                    ) : null}
                     <S.FilterControl>
                         <span>{t('common.search')}</span>
                         <S.FilterInput
@@ -328,26 +422,64 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                 <S.Table>
                     <thead>
                         <tr>
-                            <th>{t('people.user')}</th>
-                            <th>Email</th>
-                            <th>ClientIdentifier</th>
-                            <th>{t('people.teams')}</th>
+                            <th>
+                                <input
+                                    type="checkbox"
+                                    checked={allVisiblePeopleSelected}
+                                    aria-label={t('common.selectAll')}
+                                    onChange={toggleVisiblePeopleSelection}
+                                />
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('name')}>
+                                    {t('people.name')}{sortIndicator('name')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('first_name')}>
+                                    {t('people.firstName')}{sortIndicator('first_name')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('email')}>
+                                    Email{sortIndicator('email')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('client_identifier')}>
+                                    ClientIdentifier{sortIndicator('client_identifier')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('groups')}>
+                                    {t('people.teams')}{sortIndicator('groups')}
+                                </S.SortButton>
+                            </th>
                             <th>{t('common.manifest')}</th>
                             <th>{t('common.mobileconfig')}</th>
                             <th>{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {peopleByTeam.length === 0 ? (
+                        {visiblePeople.length === 0 ? (
                             <tr>
-                                <S.EmptyCell colSpan={7}>{t('people.noMatch')}</S.EmptyCell>
+                                <S.EmptyCell colSpan={9}>{t('people.noMatch')}</S.EmptyCell>
                             </tr>
                         ) : (
-                            peopleByTeam.map((person) => (
+                            visiblePeople.map((person) => (
                                 <tr key={person.id}>
                                     <td>
-                                        <S.PrimaryCell>{personLabel(person)}</S.PrimaryCell>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedPersonIds.includes(person.id)}
+                                            aria-label={t('common.selectRow')}
+                                            onChange={() => togglePersonSelection(person.id)}
+                                        />
                                     </td>
+                                    <td>
+                                        <S.PrimaryCell>{person.name}</S.PrimaryCell>
+                                    </td>
+                                    <td>{person.first_name ?? '-'}</td>
                                     <td>{person.email}</td>
                                     <td>
                                         <S.CodePill>{person.client_identifier}</S.CodePill>
@@ -489,7 +621,7 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                                 />
                             </FormField>
                             <FormField label={t('people.optionalGroups')}>
-                                <S.ChipDropdown>
+                                <S.ChipDropdown ref={editGroupsDropdownRef}>
                                     <S.ChipTrigger type="button" onClick={() => setEditGroupsOpen((open) => !open)}>
                                         {selectedEditGroups.length === 0 ? (
                                             <S.Placeholder>{t('people.noOptionalGroup')}</S.Placeholder>
@@ -559,6 +691,23 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
 
                     router.delete(`/people/${personToDelete.id}`, {
                         onFinish: () => setPersonToDelete(null),
+                    });
+                }}
+            />
+            <ConfirmModal
+                open={bulkDeleteOpen}
+                title={t('people.bulkDeleteTitle')}
+                description={t('people.bulkDeleteDescription', { count: selectedPersonIds.length })}
+                requireConfirmationCheckbox
+                confirmationLabel={t('common.confirmBulkDelete')}
+                onClose={() => setBulkDeleteOpen(false)}
+                onConfirm={() => {
+                    router.delete('/people/bulk', {
+                        data: { ids: selectedPersonIds },
+                        onFinish: () => {
+                            setBulkDeleteOpen(false);
+                            setSelectedPersonIds([]);
+                        },
                     });
                 }}
             />

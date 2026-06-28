@@ -26,6 +26,17 @@ type PackageFormData = {
     active: boolean;
 };
 
+type SortDirection = 'asc' | 'desc';
+type PackageSortKey =
+    | 'display_name'
+    | 'munki_name'
+    | 'bundle_identifier'
+    | 'version'
+    | 'source'
+    | 'active'
+    | 'assignments_count'
+    | 'hash';
+
 export default function PackagesManager({ packages }: PackagesManagerProps) {
     const { t } = useI18n();
     const [createOpen, setCreateOpen] = useState(false);
@@ -37,6 +48,12 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
     const [search, setSearch] = useState('');
     const [sourceFilter, setSourceFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [sort, setSort] = useState<{ key: PackageSortKey; direction: SortDirection }>({
+        key: 'display_name',
+        direction: 'asc',
+    });
+    const [selectedPackageIds, setSelectedPackageIds] = useState<number[]>([]);
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
     const form = useForm<PackageFormData>({
         munki_name: '',
         display_name: '',
@@ -118,24 +135,38 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
     }
 
     const normalizedSearch = search.trim().toLowerCase();
-    const filteredPackages = packages.filter((pkg) => {
-        const source = pkg.pkg_path ? 'uploaded' : 'remote';
-        const status = pkg.active ? 'active' : 'inactive';
-        const searchable = [
-            pkg.display_name,
-            pkg.munki_name,
-            pkg.bundle_identifier ?? '',
-            pkg.version ?? '',
-            pkg.pkg_url ?? '',
-            pkg.hash,
-        ].join(' ').toLowerCase();
+    const filteredPackages = packages
+        .filter((pkg) => {
+            const source = pkg.pkg_path ? 'uploaded' : 'remote';
+            const status = pkg.active ? 'active' : 'inactive';
+            const searchable = [
+                pkg.display_name,
+                pkg.munki_name,
+                pkg.bundle_identifier ?? '',
+                pkg.version ?? '',
+                pkg.pkg_url ?? '',
+                pkg.hash,
+            ].join(' ').toLowerCase();
 
-        return (
-            (!normalizedSearch || searchable.includes(normalizedSearch)) &&
-            (sourceFilter === 'all' || sourceFilter === source) &&
-            (statusFilter === 'all' || statusFilter === status)
-        );
-    });
+            return (
+                (!normalizedSearch || searchable.includes(normalizedSearch)) &&
+                (sourceFilter === 'all' || sourceFilter === source) &&
+                (statusFilter === 'all' || statusFilter === status)
+            );
+        })
+        .sort((firstPackage, secondPackage) => {
+            const comparison = String(sortValue(firstPackage, sort.key)).localeCompare(
+                String(sortValue(secondPackage, sort.key)),
+                undefined,
+                { numeric: true, sensitivity: 'base' },
+            );
+
+            if (comparison !== 0) {
+                return sort.direction === 'asc' ? comparison : -comparison;
+            }
+
+            return firstPackage.display_name.localeCompare(secondPackage.display_name, undefined, { sensitivity: 'base' });
+        });
     const normalizedMatrixSearch = matrixSearch.trim().toLowerCase();
     const packageMatrixRows = packages
         .map((pkg) => ({
@@ -199,6 +230,55 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
 
         return !normalizedMatrixSearch || searchable.includes(normalizedMatrixSearch);
     });
+
+    function sortValue(pkg: Package, key: PackageSortKey) {
+        if (key === 'source') {
+            return pkg.pkg_path ? t('packages.sourceUploaded') : t('packages.sourceRemote');
+        }
+
+        if (key === 'active') {
+            return pkg.active ? t('packages.activeStatus') : t('packages.inactiveStatus');
+        }
+
+        return pkg[key] ?? '';
+    }
+
+    function changeSort(key: PackageSortKey) {
+        setSort((current) => ({
+            key,
+            direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+        }));
+    }
+
+    function sortIndicator(key: PackageSortKey) {
+        if (sort.key !== key) {
+            return '';
+        }
+
+        return sort.direction === 'asc' ? ' ↑' : ' ↓';
+    }
+
+    const visiblePackageIds = filteredPackages.map((pkg) => pkg.id);
+    const allVisiblePackagesSelected = visiblePackageIds.length > 0
+        && visiblePackageIds.every((id) => selectedPackageIds.includes(id));
+
+    function togglePackageSelection(packageId: number) {
+        setSelectedPackageIds((current) =>
+            current.includes(packageId)
+                ? current.filter((id) => id !== packageId)
+                : [...current, packageId],
+        );
+    }
+
+    function toggleVisiblePackagesSelection() {
+        setSelectedPackageIds((current) => {
+            if (allVisiblePackagesSelected) {
+                return current.filter((id) => !visiblePackageIds.includes(id));
+            }
+
+            return Array.from(new Set([...current, ...visiblePackageIds]));
+        });
+    }
 
     useEffect(() => {
         if (!createOpen && !matrixOpen && !packageToEdit) {
@@ -668,6 +748,11 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                     <S.FilterMeta>{t('people.displayed', { count: filteredPackages.length })}</S.FilterMeta>
                 </div>
                 <S.FilterControls>
+                    {selectedPackageIds.length > 0 ? (
+                        <S.DangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
+                            {t('common.bulkDelete', { count: selectedPackageIds.length })}
+                        </S.DangerButton>
+                    ) : null}
                     <S.FilterControl>
                         <span>{t('common.search')}</span>
                         <S.FilterInput
@@ -699,25 +784,73 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                 <S.Table>
                     <thead>
                         <tr>
-                            <th>{t('assignments.package')}</th>
-                            <th>{t('packages.munkiName')}</th>
-                            <th>{t('packages.bundleIdentifier')}</th>
-                            <th>{t('packages.version')}</th>
-                            <th>{t('packages.source')}</th>
-                            <th>{t('packages.status')}</th>
-                            <th>{t('packages.assignmentCount')}</th>
-                            <th>{t('packages.hashHeader')}</th>
+                            <th>
+                                <input
+                                    type="checkbox"
+                                    checked={allVisiblePackagesSelected}
+                                    aria-label={t('common.selectAll')}
+                                    onChange={toggleVisiblePackagesSelection}
+                                />
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('display_name')}>
+                                    {t('assignments.package')}{sortIndicator('display_name')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('munki_name')}>
+                                    {t('packages.munkiName')}{sortIndicator('munki_name')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('bundle_identifier')}>
+                                    {t('packages.bundleIdentifier')}{sortIndicator('bundle_identifier')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('version')}>
+                                    {t('packages.version')}{sortIndicator('version')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('source')}>
+                                    {t('packages.source')}{sortIndicator('source')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('active')}>
+                                    {t('packages.status')}{sortIndicator('active')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('assignments_count')}>
+                                    {t('packages.assignmentCount')}{sortIndicator('assignments_count')}
+                                </S.SortButton>
+                            </th>
+                            <th>
+                                <S.SortButton type="button" onClick={() => changeSort('hash')}>
+                                    {t('packages.hashHeader')}{sortIndicator('hash')}
+                                </S.SortButton>
+                            </th>
                             <th>{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredPackages.length === 0 ? (
                             <tr>
-                                <S.EmptyCell colSpan={9}>{t('packages.noMatch')}</S.EmptyCell>
+                                <S.EmptyCell colSpan={10}>{t('packages.noMatch')}</S.EmptyCell>
                             </tr>
                         ) : (
                             filteredPackages.map((pkg) => (
                                 <tr key={pkg.id}>
+                                    <td>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedPackageIds.includes(pkg.id)}
+                                            aria-label={t('common.selectRow')}
+                                            onChange={() => togglePackageSelection(pkg.id)}
+                                        />
+                                    </td>
                                     <td>
                                         <S.PackageTitle>
                                             <PackageIcon iconUrl={pkg.icon_url} name={pkg.display_name} />
@@ -795,6 +928,23 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
 
                     router.delete(`/packages/${packageToDelete.id}`, {
                         onFinish: () => setPackageToDelete(null),
+                    });
+                }}
+            />
+            <ConfirmModal
+                open={bulkDeleteOpen}
+                title={t('packages.bulkDeleteTitle')}
+                description={t('packages.bulkDeleteDescription', { count: selectedPackageIds.length })}
+                requireConfirmationCheckbox
+                confirmationLabel={t('common.confirmBulkDelete')}
+                onClose={() => setBulkDeleteOpen(false)}
+                onConfirm={() => {
+                    router.delete('/packages/bulk', {
+                        data: { ids: selectedPackageIds },
+                        onFinish: () => {
+                            setBulkDeleteOpen(false);
+                            setSelectedPackageIds([]);
+                        },
                     });
                 }}
             />

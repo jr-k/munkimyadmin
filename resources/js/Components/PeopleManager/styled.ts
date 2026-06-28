@@ -246,6 +246,25 @@ export const Table = styled.table`
   }
 `;
 
+export const SortButton = styled.button`
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: inherit;
+  padding: 0;
+  text-align: left;
+  text-transform: inherit;
+
+  &:hover {
+    color: #0f172a;
+  }
+`;
+
 export const PrimaryCell = styled.strong`
   color: #0f172a;
 `;

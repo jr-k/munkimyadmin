@@ -59,22 +59,37 @@ class AssignmentController extends Controller
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
+        if (! $request->has('package_ids') && $request->has('package_id')) {
+            $request->merge(['package_ids' => [$request->input('package_id')]]);
+        }
+
+        if (! $request->has('targets') && $request->has(['target_type', 'target_id'])) {
+            $request->merge(['targets' => [$request->input('target_type').':'.$request->input('target_id')]]);
+        }
+
         $data = $request->validate([
-            'package_id' => ['required', 'integer', 'exists:packages,id'],
-            'target_type' => ['required', Rule::in(['person', 'group'])],
-            'target_id' => ['required', 'integer'],
+            'package_ids' => ['required', 'array', 'min:1'],
+            'package_ids.*' => ['integer', 'exists:packages,id'],
+            'targets' => ['required', 'array', 'min:1'],
+            'targets.*' => ['string', 'regex:/^(person|group):[0-9]+$/'],
             'action' => ['required', Rule::in([Assignment::ACTION_INSTALL, Assignment::ACTION_UNINSTALL])],
         ]);
 
-        $assignableClass = $data['target_type'] === 'person' ? Person::class : Group::class;
-        $assignableClass::query()->findOrFail($data['target_id']);
+        foreach (array_unique($data['targets']) as $target) {
+            [$targetType, $targetId] = explode(':', $target, 2);
+            $assignableClass = $targetType === 'person' ? Person::class : Group::class;
+            $assignableClass::query()->findOrFail($targetId);
 
-        Assignment::updateOrCreate([
-            'package_id' => $data['package_id'],
-            'assignable_type' => $assignableClass,
-            'assignable_id' => $data['target_id'],
-            'action' => $data['action'],
-        ]);
+            foreach (array_unique($data['package_ids']) as $packageId) {
+                Assignment::updateOrCreate([
+                    'package_id' => $packageId,
+                    'assignable_type' => $assignableClass,
+                    'assignable_id' => $targetId,
+                ], [
+                    'action' => $data['action'],
+                ]);
+            }
+        }
 
         return back()->with('success', ['key' => 'flash.assignmentSaved']);
     }
@@ -84,5 +99,17 @@ class AssignmentController extends Controller
         Assignment::query()->whereKey($assignment->getKey())->delete();
 
         return back()->with('success', ['key' => 'flash.assignmentDeleted']);
+    }
+
+    public function bulkDestroy(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:assignments,id'],
+        ]);
+
+        Assignment::query()->whereKey($data['ids'])->delete();
+
+        return back()->with('success', ['key' => 'flash.assignmentsDeleted']);
     }
 }

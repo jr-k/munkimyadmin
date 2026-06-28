@@ -28,6 +28,9 @@ Route::get('/repo/{path}', [MunkiRepoController::class, 'show'])
 Route::middleware('admin')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
 
+    Route::delete('/people/bulk', [PersonController::class, 'bulkDestroy'])->name('people.bulk-destroy');
+    Route::delete('/groups/bulk', [GroupController::class, 'bulkDestroy'])->name('groups.bulk-destroy');
+    Route::delete('/packages/bulk', [PackageController::class, 'bulkDestroy'])->name('packages.bulk-destroy');
     Route::resource('people', PersonController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('groups', GroupController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('packages', PackageController::class)->only(['index', 'store', 'update', 'destroy']);
@@ -35,6 +38,7 @@ Route::middleware('admin')->group(function () {
 
     Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
     Route::post('/assignments', [AssignmentController::class, 'store'])->name('assignments.store');
+    Route::delete('/assignments/bulk', [AssignmentController::class, 'bulkDestroy'])->name('assignments.bulk-destroy');
     Route::delete('/assignments/{assignment}', [AssignmentController::class, 'destroy'])->name('assignments.destroy');
 
     Route::get('/munki', [DashboardController::class, 'munki'])->name('munki.index');

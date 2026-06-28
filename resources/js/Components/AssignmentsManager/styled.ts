@@ -88,6 +88,16 @@ export const Form = styled.form`
   grid-template-columns: 1fr;
 `;
 
+export const FormGrid = styled.div`
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 export const Select = styled.select`
   background: #ffffff;
   border: 1px solid #cbd5e1;
@@ -220,6 +230,12 @@ export const PackageOption = styled.span`
   gap: 10px;
 `;
 
+export const SelectionSummary = styled.span`
+  align-items: center;
+  display: flex;
+  min-width: 0;
+`;
+
 export const TargetOption = styled.span`
   align-items: center;
   display: flex;
@@ -297,6 +313,25 @@ export const Table = styled.table`
 
   tr:last-child td {
     border-bottom: 0;
+  }
+`;
+
+export const SortButton = styled.button`
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: inherit;
+  padding: 0;
+  text-align: left;
+  text-transform: inherit;
+
+  &:hover {
+    color: #0f172a;
   }
 `;
 

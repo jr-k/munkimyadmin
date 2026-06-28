@@ -102,6 +102,18 @@ class PackageController extends Controller
         return back()->with('success', ['key' => 'flash.packageDeleted']);
     }
 
+    public function bulkDestroy(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:packages,id'],
+        ]);
+
+        Package::query()->whereKey($data['ids'])->delete();
+
+        return back()->with('success', ['key' => 'flash.packagesDeleted']);
+    }
+
     private function validatedData(Request $request, ?Package $package = null): array
     {
         $needsPackageSource = ! $request->hasFile('pkg_file')

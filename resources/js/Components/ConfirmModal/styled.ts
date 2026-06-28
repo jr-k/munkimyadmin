@@ -58,6 +58,25 @@ export const Description = styled.p`
   margin: 0;
 `;
 
+export const ConfirmationLabel = styled.label`
+  align-items: flex-start;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  color: #9a3412;
+  display: flex;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 10px;
+  line-height: 1.4;
+  padding: 10px 12px;
+`;
+
+export const ConfirmationCheckbox = styled.input`
+  flex: 0 0 auto;
+  margin-top: 2px;
+`;
+
 export const Actions = styled.div`
   display: flex;
   gap: 10px;
@@ -88,5 +107,11 @@ export const ConfirmButton = styled.button`
 
   &:hover {
     filter: brightness(1.04);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.3);
+    opacity: 0.45;
   }
 `;

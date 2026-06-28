@@ -59,6 +59,18 @@ class PersonController extends Controller
         return back()->with('success', ['key' => 'flash.personDeleted']);
     }
 
+    public function bulkDestroy(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:people,id'],
+        ]);
+
+        Person::query()->whereKey($data['ids'])->delete();
+
+        return back()->with('success', ['key' => 'flash.peopleDeleted']);
+    }
+
     private function validatedData(Request $request, ?Person $person = null): array
     {
         $data = $request->validate([

@@ -58,6 +58,21 @@ class GroupController extends Controller
         return back()->with('success', ['key' => 'flash.groupDeleted']);
     }
 
+    public function bulkDestroy(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:groups,id'],
+        ]);
+
+        Group::query()
+            ->whereKey($data['ids'])
+            ->where('is_system', false)
+            ->delete();
+
+        return back()->with('success', ['key' => 'flash.groupsDeleted']);
+    }
+
     private function validatedData(Request $request, ?Group $group = null): array
     {
         $request->merge([

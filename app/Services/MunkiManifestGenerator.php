@@ -33,7 +33,10 @@ class MunkiManifestGenerator
 
         $packages = Package::query()->where('active', true)->orderBy('munki_name')->get();
         $groups = Group::query()->with(['assignments.package'])->orderBy('slug')->get();
-        $people = Person::query()->with(['groups', 'assignments.package'])->orderBy('client_identifier')->get();
+        $people = Person::query()
+            ->with(['groups.assignments.package', 'assignments.package'])
+            ->orderBy('client_identifier')
+            ->get();
 
         $this->writePlist($manifestPath.'/'.config('munki.base_manifest'), [
             'catalogs' => [config('munki.default_catalog')],
@@ -55,15 +58,10 @@ class MunkiManifestGenerator
         }
 
         foreach ($people as $person) {
-            $includedManifests = [
-                config('munki.base_manifest'),
-                ...$person->groups->pluck('slug')->all(),
-            ];
-
             $this->writeManifest(
                 $manifestPath.'/'.$person->client_identifier,
-                array_values(array_unique($includedManifests)),
-                $person->assignments,
+                [config('munki.base_manifest')],
+                $this->resolvedPersonAssignments($person),
             );
         }
 
@@ -209,6 +207,23 @@ class MunkiManifestGenerator
         ];
 
         $this->writePlist($path, $manifest);
+    }
+
+    private function resolvedPersonAssignments(Person $person): array
+    {
+        $assignmentsByPackage = [];
+
+        foreach ($person->groups->sortBy('slug') as $group) {
+            foreach ($group->assignments as $assignment) {
+                $assignmentsByPackage[$assignment->package_id] = $assignment;
+            }
+        }
+
+        foreach ($person->assignments as $assignment) {
+            $assignmentsByPackage[$assignment->package_id] = $assignment;
+        }
+
+        return array_values($assignmentsByPackage);
     }
 
     private function writePlist(string $path, array $data): void

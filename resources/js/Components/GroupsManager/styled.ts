@@ -69,6 +69,13 @@ export const FilterControl = styled.label`
   gap: 10px;
 `;
 
+export const FilterControls = styled.div`
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+`;
+
 export const FilterInput = styled.input`
   background: #ffffff;
   border: 1px solid #cbd5e1;
@@ -143,6 +150,25 @@ export const Table = styled.table`
 
   tr:last-child td {
     border-bottom: 0;
+  }
+`;
+
+export const SortButton = styled.button`
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: inherit;
+  padding: 0;
+  text-align: left;
+  text-transform: inherit;
+
+  &:hover {
+    color: #0f172a;
   }
 `;
 

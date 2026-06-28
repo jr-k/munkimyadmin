@@ -1,58 +1,165 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Munki My Admin
+
+Munki My Admin is a small web console for building and publishing a Munki repository without editing plist files by hand. It manages people, groups, packages and assignments, then exports a static Munki repo that clients can consume directly.
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="docs/screen1.png" alt="Munki My Admin dashboard" width="49%">
+  <img src="docs/screen2.png" alt="Munki My Admin management view" width="49%">
 </p>
 
-## About Laravel
+## Highlights
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Manage people with Munki `ClientIdentifier` values based on email.
+- Organize people into groups that become Munki manifests.
+- Import local `.pkg` files or reference remote package URLs.
+- Track package metadata such as Munki name, display name, bundle identifier, version, SHA-256 hash and `.icns` icon.
+- Assign packages to people or groups as install or uninstall actions.
+- Bulk select and delete people, groups, packages and assignments with confirmation.
+- Generate Munki `catalogs`, `manifests`, `pkgsinfo`, `pkgs` and `icons`.
+- Download `.mobileconfig` profiles for people and groups.
+- Configure the external Munki repository URL from the app.
+- Switch the UI between English and French, with browser language detection.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Screenshots
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Place the application screenshots at:
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```text
+docs/screen1.png
+docs/screen2.png
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+The README already references both files, so they will appear automatically on GitHub once the images are added.
 
-## Contributing
+## Tech Stack
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- Laravel 13
+- React 19
+- Inertia.js
+- Vite
+- styled-components
+- SQLite
+- Docker and Docker Compose
 
-## Code of Conduct
+## Local Development
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Start the development stack:
 
-## Security Vulnerabilities
+```bash
+docker compose up --build
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+The app will be available at:
+
+```text
+http://localhost:8000
+```
+
+Vite runs inside the same container and is exposed on:
+
+```text
+http://localhost:5173
+```
+
+Default local credentials from `.env`:
+
+```text
+admin@example.com
+password
+```
+
+Run migrations manually if needed:
+
+```bash
+docker compose exec app php artisan migrate
+```
+
+Install or refresh frontend dependencies inside the container:
+
+```bash
+docker compose exec app npm install
+```
+
+## Munki Workflow
+
+1. Add people and groups.
+2. Add packages with either a local `.pkg` upload or a remote package URL.
+3. Assign packages to people or groups.
+4. Open the Export view and generate the Munki repo.
+5. Point Munki clients to the effective repository URL shown in the app.
+6. Use the generated `.mobileconfig` profile for each person or group when needed.
+
+The exported repo is written to `MUNKI_REPO_PATH`, which defaults to:
+
+```text
+storage/app/munki_repo
+```
+
+In Docker development, the repository is stored in the `munki_repo` volume and exposed through static public links such as:
+
+```text
+http://localhost:8000/repo
+http://localhost:8000/catalogs/production
+http://localhost:8000/catalogs/all
+http://localhost:8000/manifests/base
+```
+
+## Configuration
+
+Important environment variables:
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `APP_URL` | Base application URL used to build repository URLs | `http://localhost:8000` |
+| `ADMIN_EMAIL` | Admin login email | `admin@example.com` |
+| `ADMIN_PASSWORD` | Admin login password | `password` |
+| `MUNKI_REPO_PATH` | Local path where the Munki repo is exported | `storage/app/munki_repo` |
+| `MUNKI_DEFAULT_CATALOG` | Default catalog name | `production` |
+| `MUNKI_BASE_MANIFEST` | Base manifest name | `base` |
+
+The external client-facing URL can also be overridden from the Export page.
+
+## Production
+
+Build and run the production compose file:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Required production environment variables:
+
+```text
+APP_KEY=base64:...
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=change-me
+APP_URL=https://your-domain.example
+```
+
+Optional production variables:
+
+```text
+APP_PORT=8080
+MUNKI_DEFAULT_CATALOG=production
+MUNKI_BASE_MANIFEST=base
+```
+
+The production compose file persists SQLite, Laravel storage and the Munki repository with named Docker volumes.
+
+## Build
+
+Build frontend assets locally:
+
+```bash
+npm run build
+```
+
+Build the production Docker image:
+
+```bash
+docker build --target production -t munkimyadmin .
+```
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open source. Add or update the license file before publishing if you need a specific license.
