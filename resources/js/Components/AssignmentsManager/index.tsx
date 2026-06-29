@@ -694,7 +694,7 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                                                         $action={assignment.action}
                                                                     >
                                                                         <S.InlinePackage>
-                                                                            {assignment.action === 'install' ? '+' : '-'}
+                                                                            {assignment.action === 'uninstall' ? '-' : null}
                                                                             <PackageIcon
                                                                                 iconUrl={assignment.package.icon_url}
                                                                                 name={assignment.package.name ?? ''}
@@ -747,9 +747,8 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                                                             key={assignment.id}
                                                                             $action={assignment.action}
                                                                         >
-                                                                            {assignment.action === 'install' ? '+' : '-'}{' '}
+                                                                            {assignment.action === 'uninstall' ? '-' : null}
                                                                             <S.InlineTarget>
-                                                                                {assignment.target.type === 'group' ? t('common.group') : t('common.person')}
                                                                                 <TargetIcon type={assignment.target.type} />
                                                                                 {assignment.target.name}
                                                                             </S.InlineTarget>

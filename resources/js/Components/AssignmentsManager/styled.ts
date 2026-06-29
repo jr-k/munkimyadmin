@@ -588,9 +588,9 @@ export const AssignmentPills = styled.div`
 `;
 
 export const AssignmentPill = styled.span<{ $action: 'install' | 'uninstall' }>`
-  background: ${({ $action }) => ($action === 'install' ? '#dcfce7' : '#fee2e2')};
+  background: ${({ $action }) => ($action === 'install' ? '#f1f5f9' : '#fee2e2')};
   border-radius: 999px;
-  color: ${({ $action }) => ($action === 'install' ? '#166534' : '#991b1b')};
+  color: ${({ $action }) => ($action === 'install' ? '#334155' : '#991b1b')};
   font-size: 12px;
   font-weight: 800;
   padding: 5px 9px;
