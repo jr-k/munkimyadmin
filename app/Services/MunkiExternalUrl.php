@@ -75,6 +75,11 @@ class MunkiExternalUrl
 
         $scheme = $forwardedProto !== '' ? $forwardedProto : $request->getScheme();
         $host = $forwardedHost !== '' ? $forwardedHost : $request->getHost();
+
+        if ($forwardedHost !== '') {
+            return $scheme.'://'.$host;
+        }
+
         $port = $this->firstHeaderValue($request, 'X-Forwarded-Port');
 
         if ($port !== '' && ! str_contains($host, ':') && ! $this->isDefaultPort($scheme, $port)) {

@@ -1,5 +1,5 @@
 type TableIconProps = {
-    name: 'copy' | 'delete' | 'download' | 'edit' | 'external' | 'manifest';
+    name: 'copy' | 'delete' | 'download' | 'edit' | 'email' | 'external' | 'manifest';
 };
 
 export default function TableIcon({ name }: TableIconProps) {
@@ -28,6 +28,12 @@ export default function TableIcon({ name }: TableIconProps) {
             <>
                 <path d="M4 20h4l11-11-4-4L4 16v4Z" />
                 <path d="m13 7 4 4" />
+            </>
+        ),
+        email: (
+            <>
+                <path d="M4 6h16v12H4V6Z" />
+                <path d="m4 7 8 6 8-6" />
             </>
         ),
         external: (

@@ -257,11 +257,14 @@ export const Table = styled.table`
 `;
 
 export const CodePill = styled.code`
+  justify-self: start;
   background: #f1f5f9;
   border-radius: 999px;
   color: #334155;
+  display: inline-flex;
   font-size: 12px;
   padding: 4px 8px;
+  width: fit-content;
 `;
 
 export const SortButton = styled.button`
@@ -300,6 +303,7 @@ export const LinkInput = styled.input`
   font-size: 12px;
   min-width: 0;
   padding: 7px 9px;
+  width: 100%;
 `;
 
 export const TargetCell = styled.div`
@@ -387,6 +391,11 @@ export const Button = styled.button`
   color: #ffffff;
   font-weight: 800;
   padding: 11px 14px;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
 `;
 
 export const SecondaryButton = styled.button`
@@ -407,12 +416,32 @@ export const DangerButton = styled.button`
   padding: 9px 12px;
 `;
 
-export const TableIconButton = styled.button<{ $tone?: 'danger' | 'neutral'; $size?: 'compact' | 'default' }>`
+export const TableIconButton = styled.button<{ $tone?: 'danger' | 'neutral' | 'warning'; $size?: 'compact' | 'default' }>`
   align-items: center;
-  background: ${({ $tone }) => ($tone === 'danger' ? '#fee2e2' : '#eef2ff')};
+  background: ${({ $tone }) => {
+        if ($tone === 'danger') {
+            return '#fee2e2';
+        }
+
+        if ($tone === 'warning') {
+            return '#f3e8ff';
+        }
+
+        return '#eef2ff';
+    }};
   border: 0;
   border-radius: 10px;
-  color: ${({ $tone }) => ($tone === 'danger' ? '#991b1b' : '#3730a3')};
+  color: ${({ $tone }) => {
+        if ($tone === 'danger') {
+            return '#991b1b';
+        }
+
+        if ($tone === 'warning') {
+            return '#7e22ce';
+        }
+
+        return '#3730a3';
+    }};
   display: inline-flex;
   height: ${({ $size }) => ($size === 'compact' ? '31px' : '38px')};
   justify-content: center;
@@ -421,7 +450,17 @@ export const TableIconButton = styled.button<{ $tone?: 'danger' | 'neutral'; $si
   width: ${({ $size }) => ($size === 'compact' ? '31px' : '38px')};
 
   &:hover {
-    background: ${({ $tone }) => ($tone === 'danger' ? '#fecaca' : '#e0e7ff')};
+    background: ${({ $tone }) => {
+        if ($tone === 'danger') {
+            return '#fecaca';
+        }
+
+        if ($tone === 'warning') {
+            return '#e9d5ff';
+        }
+
+        return '#e0e7ff';
+    }};
   }
 `;
 
@@ -496,6 +535,23 @@ export const Form = styled.form`
   gap: 14px;
 `;
 
+export const FormLabel = styled.label`
+  color: #334155;
+  display: grid;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 7px;
+`;
+
+export const TextInput = styled.input`
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  color: #0f172a;
+  padding: 11px 12px;
+  width: 100%;
+`;
+
 export const Select = styled.select`
   background: #ffffff;
   border: 1px solid #cbd5e1;
@@ -508,6 +564,29 @@ export const ModalActions = styled.div`
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+`;
+
+export const EmailSummary = styled.div`
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+`;
+
+export const EmailStatus = styled.p`
+  color: #166534;
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0;
+`;
+
+export const EmailError = styled.p`
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0;
 `;
 
 export const Toast = styled.div`

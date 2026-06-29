@@ -102,6 +102,7 @@ class MobileconfigShareController extends Controller
                 'id' => $target->id,
                 'name' => trim("{$target->first_name} {$target->name}"),
                 'identifier' => $target->client_identifier,
+                'email' => $target->email,
             ];
         }
 

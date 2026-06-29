@@ -18,6 +18,10 @@ type SharesPageProps = PageProps & {
 type SortDirection = 'asc' | 'desc';
 type LinkSortKey = 'ulid' | 'url' | 'target' | 'type' | 'created_at' | 'expires_at' | 'status';
 
+type EmailResponse = {
+    sent: boolean;
+};
+
 export default function Shares({ shares, people, groups }: SharesPageProps) {
     const { props } = usePage<SharesPageProps>();
     const { t } = useI18n();
@@ -31,6 +35,11 @@ export default function Shares({ shares, people, groups }: SharesPageProps) {
     const [selectedShareIds, setSelectedShareIds] = useState<number[]>([]);
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
     const [copiedShareId, setCopiedShareId] = useState<number | null>(null);
+    const [shareToEmail, setShareToEmail] = useState<MobileconfigShare | null>(null);
+    const [recipientEmail, setRecipientEmail] = useState('');
+    const [sendingEmail, setSendingEmail] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
+    const [emailError, setEmailError] = useState('');
     const [sort, setSort] = useState<{ key: LinkSortKey; direction: SortDirection }>({
         key: 'created_at',
         direction: 'desc',
@@ -200,6 +209,64 @@ export default function Shares({ shares, people, groups }: SharesPageProps) {
         });
     }
 
+    function emailForShareTarget(share: MobileconfigShare) {
+        if (share.target.type !== 'person' || share.target.id === null) {
+            return '';
+        }
+
+        return people.find((person) => person.id === share.target.id)?.email ?? share.target.email ?? '';
+    }
+
+    function openEmailModal(share: MobileconfigShare) {
+        setShareToEmail(share);
+        setRecipientEmail(emailForShareTarget(share));
+        setSendingEmail(false);
+        setEmailSent(false);
+        setEmailError('');
+    }
+
+    function closeEmailModal() {
+        setShareToEmail(null);
+        setRecipientEmail('');
+        setSendingEmail(false);
+        setEmailSent(false);
+        setEmailError('');
+    }
+
+    function sendShareEmail(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        if (!shareToEmail || !recipientEmail.trim()) {
+            return;
+        }
+
+        const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+
+        setSendingEmail(true);
+        setEmailSent(false);
+        setEmailError('');
+
+        fetch(`/links/${shareToEmail.ulid}/email`, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token,
+            },
+            body: JSON.stringify({ email: recipientEmail.trim() }),
+        })
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error('Email request failed');
+                }
+
+                return response.json() as Promise<EmailResponse>;
+            })
+            .then(() => setEmailSent(true))
+            .catch(() => setEmailError(t('mobileconfig.emailError')))
+            .finally(() => setSendingEmail(false));
+    }
+
     useEffect(() => {
         if (copiedShareId === null) {
             return;
@@ -251,6 +318,22 @@ export default function Shares({ shares, people, groups }: SharesPageProps) {
 
         return () => document.removeEventListener('mousedown', closeOnOutsideClick);
     }, [targetsOpen]);
+
+    useEffect(() => {
+        if (!shareToEmail) {
+            return;
+        }
+
+        function closeOnEscape(event: KeyboardEvent) {
+            if (event.key === 'Escape') {
+                closeEmailModal();
+            }
+        }
+
+        window.addEventListener('keydown', closeOnEscape);
+
+        return () => window.removeEventListener('keydown', closeOnEscape);
+    }, [shareToEmail]);
 
     return (
         <>
@@ -365,18 +448,23 @@ export default function Shares({ shares, people, groups }: SharesPageProps) {
                                         </S.SortButton>
                                     </th>
                                     <th>
+                                        <S.SortButton type="button" onClick={() => changeSort('status')}>
+                                            {t('shares.status')}{sortIndicator('status')}
+                                        </S.SortButton>
+                                    </th>
+                                    <th>
                                         <S.SortButton type="button" onClick={() => changeSort('url')}>
                                             {t('shares.link')}{sortIndicator('url')}
                                         </S.SortButton>
                                     </th>
                                     <th>
-                                        <S.SortButton type="button" onClick={() => changeSort('target')}>
-                                            {t('shares.target')}{sortIndicator('target')}
+                                        <S.SortButton type="button" onClick={() => changeSort('type')}>
+                                            {t('shares.type')}{sortIndicator('type')}
                                         </S.SortButton>
                                     </th>
                                     <th>
-                                        <S.SortButton type="button" onClick={() => changeSort('type')}>
-                                            {t('shares.type')}{sortIndicator('type')}
+                                        <S.SortButton type="button" onClick={() => changeSort('target')}>
+                                            {t('shares.target')}{sortIndicator('target')}
                                         </S.SortButton>
                                     </th>
                                     <th>
@@ -387,11 +475,6 @@ export default function Shares({ shares, people, groups }: SharesPageProps) {
                                     <th>
                                         <S.SortButton type="button" onClick={() => changeSort('expires_at')}>
                                             {t('shares.expiresAt')}{sortIndicator('expires_at')}
-                                        </S.SortButton>
-                                    </th>
-                                    <th>
-                                        <S.SortButton type="button" onClick={() => changeSort('status')}>
-                                            {t('shares.status')}{sortIndicator('status')}
                                         </S.SortButton>
                                     </th>
                                     <th>{t('common.actions')}</th>
@@ -417,6 +500,11 @@ export default function Shares({ shares, people, groups }: SharesPageProps) {
                                                 <S.CodePill>{share.ulid}</S.CodePill>
                                             </td>
                                             <td>
+                                                <S.Badge $expired={share.expired}>
+                                                    {share.expired ? t('shares.expired') : t('shares.active')}
+                                                </S.Badge>
+                                            </td>
+                                            <td>
                                                 <S.LinkField>
                                                     <S.LinkInput
                                                         value={share.url}
@@ -436,12 +524,6 @@ export default function Shares({ shares, people, groups }: SharesPageProps) {
                                                 </S.LinkField>
                                             </td>
                                             <td>
-                                                <S.TargetCell>
-                                                    <S.TargetName>{share.target.name ?? '-'}</S.TargetName>
-                                                    <S.CodePill>{share.target.identifier ?? '-'}</S.CodePill>
-                                                </S.TargetCell>
-                                            </td>
-                                            <td>
                                                 {share.target.type === 'group' || share.target.type === 'person' ? (
                                                     <S.TypeIconLabel
                                                         aria-label={share.target.type === 'group' ? t('common.group') : t('common.person')}
@@ -457,18 +539,28 @@ export default function Shares({ shares, people, groups }: SharesPageProps) {
                                                 )}
                                             </td>
                                             <td>
+                                                <S.TargetCell>
+                                                    <S.TargetName>{share.target.name ?? '-'}</S.TargetName>
+                                                    <S.CodePill>{share.target.identifier ?? '-'}</S.CodePill>
+                                                </S.TargetCell>
+                                            </td>
+                                            <td>
                                                 <S.DateText>{formatDate(share.created_at)}</S.DateText>
                                             </td>
                                             <td>
                                                 <S.DateText>{formatDate(share.expires_at)}</S.DateText>
                                             </td>
                                             <td>
-                                                <S.Badge $expired={share.expired}>
-                                                    {share.expired ? t('shares.expired') : t('shares.active')}
-                                                </S.Badge>
-                                            </td>
-                                            <td>
                                                 <S.RowActions>
+                                                    <S.TableIconButton
+                                                        type="button"
+                                                        $tone="warning"
+                                                        aria-label={t('mobileconfig.emailTitle')}
+                                                        title={t('mobileconfig.emailTitle')}
+                                                        onClick={() => openEmailModal(share)}
+                                                    >
+                                                        <TableIcon name="email" />
+                                                    </S.TableIconButton>
                                                     <S.TableIconButton
                                                         type="button"
                                                         aria-label={t('common.edit')}
@@ -528,6 +620,72 @@ export default function Shares({ shares, people, groups }: SharesPageProps) {
                                     </S.SecondaryButton>
                                     <S.Button type="submit" disabled={form.processing}>
                                         {t('common.save')}
+                                    </S.Button>
+                                </S.ModalActions>
+                            </S.Form>
+                        </S.Dialog>
+                    </S.ModalOverlay>
+                ) : null}
+
+                {shareToEmail ? (
+                    <S.ModalOverlay
+                        onMouseDown={(event) => {
+                            if (event.target === event.currentTarget) {
+                                closeEmailModal();
+                            }
+                        }}
+                    >
+                        <S.Dialog
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="share-email-modal-title"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <S.ModalHeader>
+                                <div>
+                                    <S.ModalTitle id="share-email-modal-title">{t('mobileconfig.emailTitle')}</S.ModalTitle>
+                                    <S.ModalDescription>{t('mobileconfig.emailDescription')}</S.ModalDescription>
+                                </div>
+                                <S.IconButton type="button" onClick={closeEmailModal} aria-label={t('common.close')}>
+                                    ×
+                                </S.IconButton>
+                            </S.ModalHeader>
+                            <S.EmailSummary>
+                                <S.TargetName>{shareToEmail.target.name ?? shareToEmail.ulid}</S.TargetName>
+                                <S.LinkInput
+                                    value={shareToEmail.url}
+                                    readOnly
+                                    aria-label={t('shares.link')}
+                                    onFocus={(event) => event.target.select()}
+                                />
+                            </S.EmailSummary>
+                            <S.Form onSubmit={sendShareEmail}>
+                                <S.FormLabel>
+                                    <span>{t('mobileconfig.recipientEmail')}</span>
+                                    <S.TextInput
+                                        type="email"
+                                        value={recipientEmail}
+                                        placeholder={t('mobileconfig.recipientEmailPlaceholder')}
+                                        onChange={(event) => {
+                                            setRecipientEmail(event.target.value);
+                                            setEmailSent(false);
+                                            setEmailError('');
+                                        }}
+                                        autoFocus
+                                    />
+                                </S.FormLabel>
+                                {emailSent ? (
+                                    <S.EmailStatus role="status">
+                                        {t('mobileconfig.emailSent', { email: recipientEmail.trim() })}
+                                    </S.EmailStatus>
+                                ) : null}
+                                {emailError ? <S.EmailError role="alert">{emailError}</S.EmailError> : null}
+                                <S.ModalActions>
+                                    <S.SecondaryButton type="button" onClick={closeEmailModal}>
+                                        {t('common.cancel')}
+                                    </S.SecondaryButton>
+                                    <S.Button type="submit" disabled={sendingEmail || !recipientEmail.trim()}>
+                                        {sendingEmail ? t('mobileconfig.emailSending') : t('mobileconfig.emailSend')}
                                     </S.Button>
                                 </S.ModalActions>
                             </S.Form>

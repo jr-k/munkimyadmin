@@ -88,6 +88,7 @@ export type MobileconfigShare = {
         id: number | null;
         name: string | null;
         identifier: string | null;
+        email?: string | null;
     };
     expires_at: string | null;
     expired: boolean;
