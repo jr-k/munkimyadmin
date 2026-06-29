@@ -44,10 +44,15 @@ type PackageFormData = {
     active: boolean;
 };
 
+function isPackageCategory(category: string | null): category is PackageCategory {
+    return packageCategories.includes(category as PackageCategory);
+}
+
 type SortDirection = 'asc' | 'desc';
 type PackageSortKey =
     | 'display_name'
     | 'munki_name'
+    | 'category'
     | 'bundle_identifier'
     | 'version'
     | 'source'
@@ -67,6 +72,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
     const [packageToEdit, setPackageToEdit] = useState<Package | null>(null);
     const [packageToDelete, setPackageToDelete] = useState<Package | null>(null);
     const [search, setSearch] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
     const [sourceFilter, setSourceFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     const [sort, setSort] = useState<{ key: PackageSortKey; direction: SortDirection }>({
@@ -174,9 +180,11 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
         .filter((pkg) => {
             const source = pkg.pkg_path ? 'uploaded' : 'remote';
             const status = pkg.active ? 'active' : 'inactive';
+            const categoryLabel = packageCategoryLabel(pkg.category);
             const searchable = [
                 pkg.display_name,
                 pkg.munki_name,
+                categoryLabel ?? '',
                 pkg.bundle_identifier ?? '',
                 pkg.version ?? '',
                 pkg.pkg_url ?? '',
@@ -185,6 +193,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
 
             return (
                 (!normalizedSearch || searchable.includes(normalizedSearch)) &&
+                (categoryFilter === 'all' || categoryFilter === pkg.category) &&
                 (sourceFilter === 'all' || sourceFilter === source) &&
                 (statusFilter === 'all' || statusFilter === status)
             );
@@ -295,7 +304,19 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
             return pkg.active ? t('packages.activeStatus') : t('packages.inactiveStatus');
         }
 
+        if (key === 'category') {
+            return packageCategoryLabel(pkg.category) ?? '';
+        }
+
         return pkg[key] ?? '';
+    }
+
+    function packageCategoryLabel(category: string | null) {
+        if (!isPackageCategory(category)) {
+            return null;
+        }
+
+        return t(`packages.category.${category}` as TranslationKey);
     }
 
     function changeSort(key: PackageSortKey) {
@@ -990,6 +1011,17 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                         />
                     </S.FilterControl>
                     <S.FilterControl>
+                        <span>{t('packages.category')}</span>
+                        <S.FilterSelect value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                            <option value="all">{t('common.all')}</option>
+                            {packageCategories.map((category) => (
+                                <option key={category} value={category}>
+                                    {t(`packages.category.${category}` as TranslationKey)}
+                                </option>
+                            ))}
+                        </S.FilterSelect>
+                    </S.FilterControl>
+                    <S.FilterControl>
                         <span>{t('packages.source')}</span>
                         <S.FilterSelect value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>
                             <option value="all">{t('packages.allSources')}</option>
@@ -1048,6 +1080,11 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                 </S.SortButton>
                             </th>
                             <th>
+                                <S.SortButton type="button" onClick={() => changeSort('category')}>
+                                    {t('packages.category')}{sortIndicator('category')}
+                                </S.SortButton>
+                            </th>
+                            <th>
                                 <S.SortButton type="button" onClick={() => changeSort('source')}>
                                     {t('packages.source')}{sortIndicator('source')}
                                 </S.SortButton>
@@ -1062,11 +1099,6 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                     {t('packages.assignmentCount')}{sortIndicator('assignments_count')}
                                 </S.SortButton>
                             </S.CenterHeader>
-                            <th>
-                                <S.SortButton type="button" onClick={() => changeSort('hash')}>
-                                    {t('packages.hashHeader')}{sortIndicator('hash')}
-                                </S.SortButton>
-                            </th>
                             {canUpdatePackages ? <th>{t('common.actions')}</th> : null}
                         </tr>
                     </thead>
@@ -1101,6 +1133,13 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                         {pkg.version ? <S.VersionText>{pkg.version}</S.VersionText> : '-'}
                                     </td>
                                     <td>
+                                        {packageCategoryLabel(pkg.category) ? (
+                                            <S.CategoryBadge>{packageCategoryLabel(pkg.category)}</S.CategoryBadge>
+                                        ) : (
+                                            '-'
+                                        )}
+                                    </td>
+                                    <td>
                                         <S.SourceBadge $source={pkg.pkg_path ? 'uploaded' : 'remote'}>
                                             {pkg.pkg_path ? t('packages.sourceUploaded') : t('packages.sourceRemote')}
                                         </S.SourceBadge>
@@ -1115,9 +1154,6 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                         </S.StatusBadge>
                                     </S.StatusCell>
                                     <S.CountCell>{pkg.assignments_count ?? 0}</S.CountCell>
-                                    <td>
-                                        <S.HashText>{pkg.hash}</S.HashText>
-                                    </td>
                                     {canUpdatePackages ? (
                                         <td>
                                             <S.RowActions>

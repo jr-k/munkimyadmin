@@ -455,6 +455,17 @@ export const SourceBadge = styled.span<{ $source: 'uploaded' | 'remote' }>`
   padding: 4px 8px;
 `;
 
+export const CategoryBadge = styled.span`
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 999px;
+  color: #334155;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 8px;
+`;
+
 export const HashText = styled.code`
   color: #64748b;
   display: block;
