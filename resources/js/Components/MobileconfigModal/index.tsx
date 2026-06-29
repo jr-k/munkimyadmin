@@ -18,8 +18,14 @@ type PreviewResponse = {
 };
 
 type ShareResponse = {
+    ulid: string;
     url: string;
     expires_at: string | null;
+    recipient_email: string | null;
+};
+
+type EmailResponse = {
+    sent: boolean;
 };
 
 export default function MobileconfigModal({
@@ -36,10 +42,15 @@ export default function MobileconfigModal({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [expiresIn, setExpiresIn] = useState('never');
+    const [shareUlid, setShareUlid] = useState('');
     const [shareLink, setShareLink] = useState('');
     const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
     const [publishing, setPublishing] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [recipientEmail, setRecipientEmail] = useState('');
+    const [sendingEmail, setSendingEmail] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
+    const [emailError, setEmailError] = useState('');
 
     useEffect(() => {
         if (!open) {
@@ -48,9 +59,14 @@ export default function MobileconfigModal({
 
         setLoading(true);
         setError('');
+        setShareUlid('');
         setShareLink('');
         setShareExpiresAt(null);
         setCopied(false);
+        setRecipientEmail('');
+        setSendingEmail(false);
+        setEmailSent(false);
+        setEmailError('');
 
         fetch(previewUrl, { headers: { Accept: 'application/json' } })
             .then(async (response) => {
@@ -90,6 +106,8 @@ export default function MobileconfigModal({
 
         setPublishing(true);
         setError('');
+        setEmailSent(false);
+        setEmailError('');
 
         fetch(shareUrl, {
             method: 'POST',
@@ -108,11 +126,45 @@ export default function MobileconfigModal({
                 return response.json() as Promise<ShareResponse>;
             })
             .then((data) => {
+                setShareUlid(data.ulid);
                 setShareLink(data.url);
                 setShareExpiresAt(data.expires_at);
+                setRecipientEmail(data.recipient_email ?? '');
             })
             .catch(() => setError(t('mobileconfig.shareError')))
             .finally(() => setPublishing(false));
+    }
+
+    function sendShareEmail() {
+        if (!shareUlid || !recipientEmail.trim()) {
+            return;
+        }
+
+        const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+
+        setSendingEmail(true);
+        setEmailSent(false);
+        setEmailError('');
+
+        fetch(`/links/${shareUlid}/email`, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token,
+            },
+            body: JSON.stringify({ email: recipientEmail.trim() }),
+        })
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error('Email request failed');
+                }
+
+                return response.json() as Promise<EmailResponse>;
+            })
+            .then(() => setEmailSent(true))
+            .catch(() => setEmailError(t('mobileconfig.emailError')))
+            .finally(() => setSendingEmail(false));
     }
 
     function copyShareLink() {
@@ -182,14 +234,54 @@ export default function MobileconfigModal({
                     </S.ShareControls>
 
                     {shareLink ? (
-                        <div>
+                        <S.ShareResult>
                             <S.ShareLink value={shareLink} readOnly onFocus={(event) => event.target.select()} />
                             <S.Description>
                                 {shareExpiresAt
                                     ? t('mobileconfig.shareExpiresAt', { date: new Date(shareExpiresAt).toLocaleString() })
                                     : t('mobileconfig.permanentLink')}
                             </S.Description>
-                        </div>
+                        </S.ShareResult>
+                    ) : null}
+
+                    {shareLink ? (
+                        <S.EmailBox>
+                            <S.EmailHeader>
+                                <S.EmailIcon aria-hidden="true">✉</S.EmailIcon>
+                                <div>
+                                    <S.EmailTitle>{t('mobileconfig.emailTitle')}</S.EmailTitle>
+                                    <S.Description>{t('mobileconfig.emailDescription')}</S.Description>
+                                </div>
+                            </S.EmailHeader>
+                            <S.EmailControls>
+                                <S.EmailLabel>
+                                    <span>{t('mobileconfig.recipientEmail')}</span>
+                                    <S.EmailInput
+                                        type="email"
+                                        value={recipientEmail}
+                                        placeholder={t('mobileconfig.recipientEmailPlaceholder')}
+                                        onChange={(event) => {
+                                            setRecipientEmail(event.target.value);
+                                            setEmailSent(false);
+                                            setEmailError('');
+                                        }}
+                                    />
+                                </S.EmailLabel>
+                                <S.Button
+                                    type="button"
+                                    onClick={sendShareEmail}
+                                    disabled={sendingEmail || !recipientEmail.trim()}
+                                >
+                                    {sendingEmail ? t('mobileconfig.emailSending') : t('mobileconfig.emailSend')}
+                                </S.Button>
+                            </S.EmailControls>
+                            {emailSent ? (
+                                <S.EmailStatus role="status">
+                                    {t('mobileconfig.emailSent', { email: recipientEmail.trim() })}
+                                </S.EmailStatus>
+                            ) : null}
+                            {emailError ? <S.EmailError role="alert">{emailError}</S.EmailError> : null}
+                        </S.EmailBox>
                     ) : null}
                 </S.ShareBox>
 

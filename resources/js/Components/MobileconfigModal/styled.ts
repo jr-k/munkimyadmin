@@ -131,6 +131,87 @@ export const ShareLink = styled.input`
   width: 100%;
 `;
 
+export const ShareResult = styled.div`
+  display: grid;
+  gap: 8px;
+`;
+
+export const EmailBox = styled.div`
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+`;
+
+export const EmailHeader = styled.div`
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+`;
+
+export const EmailIcon = styled.span`
+  align-items: center;
+  background: #2563eb;
+  border-radius: 14px;
+  color: #ffffff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 18px;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+`;
+
+export const EmailTitle = styled.h3`
+  color: #0f172a;
+  font-size: 16px;
+  margin: 0;
+`;
+
+export const EmailControls = styled.div`
+  align-items: flex-end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const EmailLabel = styled.label`
+  color: #334155;
+  display: grid;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 7px;
+`;
+
+export const EmailInput = styled.input`
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  color: #0f172a;
+  padding: 11px 12px;
+  width: 100%;
+`;
+
+export const EmailStatus = styled.p`
+  color: #166534;
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0;
+`;
+
+export const EmailError = styled.p`
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0;
+`;
+
 export const Actions = styled.div`
   display: flex;
   flex-wrap: wrap;

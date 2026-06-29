@@ -43,12 +43,12 @@ class MunkiProfileController extends Controller
 
     public function shareGroup(Request $request, Group $group): JsonResponse
     {
-        return $this->share($request, Group::class, $group->getKey());
+        return $this->share($request, $group);
     }
 
     public function sharePerson(Request $request, Person $person): JsonResponse
     {
-        return $this->share($request, Person::class, $person->getKey());
+        return $this->share($request, $person);
     }
 
     public function shared(MobileconfigShare $share): View
@@ -119,7 +119,7 @@ class MunkiProfileController extends Controller
         ]);
     }
 
-    private function share(Request $request, string $targetClass, int $targetId): JsonResponse
+    private function share(Request $request, Group|Person $target): JsonResponse
     {
         $data = $request->validate([
             'expires_in' => ['nullable', Rule::in(['never', '1d', '7d', '30d'])],
@@ -134,14 +134,16 @@ class MunkiProfileController extends Controller
 
         $share = MobileconfigShare::create([
             'ulid' => strtolower((string) Str::ulid()),
-            'target_type' => $targetClass,
-            'target_id' => $targetId,
+            'target_type' => $target::class,
+            'target_id' => $target->getKey(),
             'expires_at' => $expiresAt,
         ]);
 
         return response()->json([
+            'ulid' => $share->ulid,
             'url' => url('/m/'.$share->ulid),
             'expires_at' => $share->expires_at?->toIso8601String(),
+            'recipient_email' => $target instanceof Person ? $target->email : null,
         ], 201);
     }
 

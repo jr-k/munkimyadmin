@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\MobileconfigShareLink;
 use App\Models\Group;
 use App\Models\MobileconfigShare;
 use App\Models\Person;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -51,6 +54,23 @@ class MobileconfigShareController extends Controller
         }
 
         return back()->with('success', ['key' => 'flash.shareUpdated']);
+    }
+
+    public function email(Request $request, MobileconfigShare $share): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email:rfc', 'max:255'],
+        ]);
+
+        Mail::to($data['email'])->send(new MobileconfigShareLink(
+            url: url('/m/'.$share->ulid),
+            targetName: $this->target($share)['name'],
+            expiresAt: $share->expires_at,
+        ));
+
+        return response()->json([
+            'sent' => true,
+        ]);
     }
 
     public function destroy(MobileconfigShare $share): \Illuminate\Http\RedirectResponse

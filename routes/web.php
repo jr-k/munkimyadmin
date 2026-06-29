@@ -52,6 +52,7 @@ Route::middleware('admin')->group(function () {
 
     Route::get('/links', [MobileconfigShareController::class, 'index'])->name('links.index');
     Route::delete('/links/bulk', [MobileconfigShareController::class, 'bulkDestroy'])->name('links.bulk-destroy');
+    Route::post('/links/{share}/email', [MobileconfigShareController::class, 'email'])->name('links.email');
     Route::put('/links/{share}', [MobileconfigShareController::class, 'update'])->name('links.update');
     Route::delete('/links/{share}', [MobileconfigShareController::class, 'destroy'])->name('links.destroy');
 
