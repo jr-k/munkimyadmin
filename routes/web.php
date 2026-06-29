@@ -35,11 +35,15 @@ Route::middleware('admin')->group(function () {
     Route::delete('/people/bulk', [PersonController::class, 'bulkDestroy'])->name('people.bulk-destroy');
     Route::delete('/groups/bulk', [GroupController::class, 'bulkDestroy'])->name('groups.bulk-destroy');
     Route::delete('/packages/bulk', [PackageController::class, 'bulkDestroy'])->name('packages.bulk-destroy');
+    Route::get('/people/csv', [PersonController::class, 'csv'])->name('people.csv');
+    Route::get('/groups/csv', [GroupController::class, 'csv'])->name('groups.csv');
+    Route::get('/packages/csv', [PackageController::class, 'csv'])->name('packages.csv');
+    Route::get('/assignments/csv', [AssignmentController::class, 'csv'])->name('assignments.csv');
     Route::resource('people', PersonController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('groups', GroupController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('packages', PackageController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::get('/packages/{package}/file', PackageFileController::class)->name('packages.file');
-    Route::get('/packages/{package}/icon', PackageIconController::class)->name('packages.icon');
+    Route::get('/packages/{package:public_id}/file', PackageFileController::class)->name('packages.file');
+    Route::get('/packages/{package:public_id}/icon', PackageIconController::class)->name('packages.icon');
 
     Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
     Route::post('/assignments', [AssignmentController::class, 'store'])->name('assignments.store');

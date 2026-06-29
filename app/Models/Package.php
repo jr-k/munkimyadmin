@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Package extends Model
 {
@@ -18,6 +19,13 @@ class Package extends Model
         'pkg_url',
         'active',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Package $package): void {
+            $package->public_id ??= (string) Str::ulid();
+        });
+    }
 
     protected function casts(): array
     {

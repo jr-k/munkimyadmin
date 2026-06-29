@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class MunkiRepoController extends Controller
@@ -20,13 +18,18 @@ class MunkiRepoController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $path): BinaryFileResponse
+    public function show(string $path): BinaryFileResponse
     {
         $repoPath = realpath((string) config('munki.repo_path'));
         abort_if($repoPath === false, 404);
 
         $filePath = realpath($repoPath.'/'.ltrim($path, '/'));
-        abort_if($filePath === false || ! Str::startsWith($filePath, $repoPath) || ! File::isFile($filePath), 404);
+        abort_if(
+            $filePath === false
+                || ! str_starts_with($filePath, $repoPath.DIRECTORY_SEPARATOR)
+                || ! File::isFile($filePath),
+            404,
+        );
 
         return response()->file($filePath);
     }

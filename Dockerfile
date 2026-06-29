@@ -74,7 +74,8 @@ CMD ["sh", "-lc", "npx concurrently -c \"#93c5fd,#c4b5fd\" \"php artisan serve -
 
 FROM php_base AS production
 ENV APP_ENV=production \
-    APP_DEBUG=false
+    APP_DEBUG=false \
+    MUNKI_PACKAGE_X_ACCEL=true
 
 COPY --from=composer_deps /var/www/html/vendor ./vendor
 COPY . .

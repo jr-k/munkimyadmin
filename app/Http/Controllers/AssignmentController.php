@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AssignmentController extends Controller
 {
@@ -28,7 +29,7 @@ class AssignmentController extends Controller
                         'name' => $assignment->package?->display_name,
                         'munki_name' => $assignment->package?->munki_name,
                         'icon_url' => $assignment->package?->icon_path
-                            ? route('packages.icon', $assignment->package)
+                            ? route('packages.icon', ['package' => $assignment->package->public_id])
                             : null,
                     ],
                     'target' => [
@@ -48,13 +49,50 @@ class AssignmentController extends Controller
                 ->get()
                 ->map(fn (Package $package) => [
                     ...$package->toArray(),
-                    'icon_url' => $package->icon_path ? route('packages.icon', $package) : null,
+                    'icon_url' => $package->icon_path ? route('packages.icon', ['package' => $package->public_id]) : null,
                 ]),
             'people' => Person::query()
                 ->with('groups')
                 ->orderBy('name', 'asc')
                 ->get(),
         ]);
+    }
+
+    public function csv(): StreamedResponse
+    {
+        $assignments = Assignment::query()
+            ->with('package', 'assignable')
+            ->latest()
+            ->get()
+            ->map(function (Assignment $assignment) {
+                $target = $assignment->assignable;
+
+                return [
+                    $assignment->id,
+                    $assignment->package?->munki_name,
+                    $assignment->package?->display_name,
+                    $assignment->action,
+                    $assignment->assignable_type === Person::class ? 'person' : 'group',
+                    $target instanceof Person
+                        ? trim("{$target->first_name} {$target->name}")
+                        : ($target instanceof Group ? $target->name : null),
+                    $target instanceof Person
+                        ? $target->client_identifier
+                        : ($target instanceof Group ? $target->slug : null),
+                    $assignment->created_at?->toIso8601String(),
+                ];
+            });
+
+        return $this->streamCsv('munkitop-assignments.csv', [
+            'id',
+            'package_munki_name',
+            'package_display_name',
+            'action',
+            'target_type',
+            'target_name',
+            'target_identifier',
+            'created_at',
+        ], $assignments);
     }
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse

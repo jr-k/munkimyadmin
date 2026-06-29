@@ -237,6 +237,7 @@ export const SecondaryButton = styled.button`
   font-weight: 800;
   justify-content: center;
   padding: 11px 14px;
+  text-decoration: none;
 `;
 
 export const ButtonSpinner = styled.span`

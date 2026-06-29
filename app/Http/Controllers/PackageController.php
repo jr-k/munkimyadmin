@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PackageController extends Controller
 {
@@ -31,9 +32,9 @@ class PackageController extends Controller
                     'bundle_identifier' => $package->bundle_identifier,
                     'version' => $package->version,
                     'icon_path' => $package->icon_path,
-                    'icon_url' => $package->icon_path ? route('packages.icon', $package) : null,
+                    'icon_url' => $package->icon_path ? route('packages.icon', ['package' => $package->public_id]) : null,
                     'pkg_path' => $package->pkg_path,
-                    'pkg_file_url' => $package->pkg_path ? route('packages.file', $package) : null,
+                    'pkg_file_url' => $package->pkg_path ? route('packages.file', ['package' => $package->public_id]) : null,
                     'hash' => $package->hash,
                     'pkg_url' => $package->pkg_url,
                     'active' => $package->active,
@@ -54,6 +55,43 @@ class PackageController extends Controller
                     ]),
                 ]),
         ]);
+    }
+
+    public function csv(): StreamedResponse
+    {
+        $packages = Package::query()
+            ->withCount('assignments')
+            ->orderBy('display_name')
+            ->get()
+            ->map(fn (Package $package) => [
+                $package->id,
+                $package->munki_name,
+                $package->display_name,
+                $package->bundle_identifier,
+                $package->version,
+                $package->pkg_path ? 'upload' : 'url',
+                $package->pkg_path,
+                $package->pkg_url,
+                $package->active ? 'yes' : 'no',
+                $package->assignments_count,
+                $package->hash,
+                $package->created_at?->toIso8601String(),
+            ]);
+
+        return $this->streamCsv('munkitop-packages.csv', [
+            'id',
+            'munki_name',
+            'display_name',
+            'bundle_identifier',
+            'version',
+            'source',
+            'pkg_path',
+            'pkg_url',
+            'active',
+            'assignments_count',
+            'hash',
+            'created_at',
+        ], $packages);
     }
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse

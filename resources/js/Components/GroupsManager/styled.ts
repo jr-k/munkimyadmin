@@ -43,6 +43,13 @@ export const ToolbarDescription = styled.p`
   margin: 2px 0 0;
 `;
 
+export const ToolbarActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+`;
+
 export const FilterBar = styled.div`
   align-items: center;
   background: #ffffff;
@@ -229,12 +236,16 @@ export const Button = styled.button`
 `;
 
 export const SecondaryButton = styled.button`
+  align-items: center;
   background: #eef2ff;
   border: 0;
   border-radius: 10px;
   color: #3730a3;
+  display: inline-flex;
   font-weight: 700;
+  justify-content: center;
   padding: 9px 12px;
+  text-decoration: none;
 `;
 
 export const List = styled.div`

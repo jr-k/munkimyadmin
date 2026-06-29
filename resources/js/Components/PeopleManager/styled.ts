@@ -49,6 +49,17 @@ export const ToolbarDescription = styled.p`
   margin: 2px 0 0;
 `;
 
+export const ToolbarActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+
+  @media (max-width: 640px) {
+    margin-left: 0;
+  }
+`;
+
 export const Input = styled.input`
   border: 1px solid #cbd5e1;
   border-radius: 12px;
@@ -339,12 +350,16 @@ export const Meta = styled.div`
 `;
 
 export const SecondaryButton = styled.button`
+  align-items: center;
   background: #eef2ff;
   border: 0;
   border-radius: 10px;
   color: #3730a3;
+  display: inline-flex;
   font-weight: 700;
+  justify-content: center;
   padding: 9px 12px;
+  text-decoration: none;
 `;
 
 export const DangerButton = styled.button`

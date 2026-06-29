@@ -298,9 +298,14 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                     <S.ToolbarTitle>{t('common.assignments')}</S.ToolbarTitle>
                     <S.ToolbarDescription>{t('assignments.description')}</S.ToolbarDescription>
                 </div>
-                <S.Button type="button" onClick={() => setCreateOpen(true)}>
-                    {t('common.add')}
-                </S.Button>
+                <S.ToolbarActions>
+                    <S.SecondaryButton as="a" href="/assignments/csv">
+                        {t('common.exportCsv')}
+                    </S.SecondaryButton>
+                    <S.Button type="button" onClick={() => setCreateOpen(true)}>
+                        {t('common.add')}
+                    </S.Button>
+                </S.ToolbarActions>
             </S.Toolbar>
 
             {createOpen ? (

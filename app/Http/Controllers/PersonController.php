@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PersonController extends Controller
 {
@@ -26,6 +27,35 @@ class PersonController extends Controller
                 ->orderBy('name', 'asc')
                 ->get(),
         ]);
+    }
+
+    public function csv(): StreamedResponse
+    {
+        $people = Person::query()
+            ->with('groups')
+            ->orderBy('name', 'asc')
+            ->get()
+            ->map(fn (Person $person) => [
+                $person->id,
+                $person->first_name,
+                $person->name,
+                $person->email,
+                $person->client_identifier,
+                $person->groups->pluck('name')->implode(', '),
+                $person->notes,
+                $person->created_at?->toIso8601String(),
+            ]);
+
+        return $this->streamCsv('munkitop-people.csv', [
+            'id',
+            'first_name',
+            'name',
+            'email',
+            'client_identifier',
+            'groups',
+            'notes',
+            'created_at',
+        ], $people);
     }
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse

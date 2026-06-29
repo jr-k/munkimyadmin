@@ -303,9 +303,14 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                         {t('people.description')}
                     </S.ToolbarDescription>
                 </div>
-                <S.Button type="button" onClick={() => setCreateOpen(true)}>
-                    {t('common.add')}
-                </S.Button>
+                <S.ToolbarActions>
+                    <S.SecondaryButton as="a" href="/people/csv">
+                        {t('common.exportCsv')}
+                    </S.SecondaryButton>
+                    <S.Button type="button" onClick={() => setCreateOpen(true)}>
+                        {t('common.add')}
+                    </S.Button>
+                </S.ToolbarActions>
             </S.Toolbar>
 
             {createOpen ? (

@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class GroupController extends Controller
 {
@@ -28,6 +29,36 @@ class GroupController extends Controller
                 ->orderBy('name', 'asc')
                 ->get(),
         ]);
+    }
+
+    public function csv(): StreamedResponse
+    {
+        $groups = Group::query()
+            ->with('people')
+            ->withCount('people')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Group $group) => [
+                $group->id,
+                $group->name,
+                $group->slug,
+                $group->is_system ? 'yes' : 'no',
+                $group->people_count,
+                $group->people->pluck('email')->implode(', '),
+                $group->notes,
+                $group->created_at?->toIso8601String(),
+            ]);
+
+        return $this->streamCsv('munkitop-groups.csv', [
+            'id',
+            'name',
+            'slug',
+            'is_system',
+            'people_count',
+            'people_emails',
+            'notes',
+            'created_at',
+        ], $groups);
     }
 
     public function store(Request $request): \Illuminate\Http\RedirectResponse

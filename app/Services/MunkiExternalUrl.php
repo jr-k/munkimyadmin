@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppSetting;
+use Illuminate\Http\Request;
 
 class MunkiExternalUrl
 {
@@ -56,7 +57,41 @@ class MunkiExternalUrl
 
     private function defaultBaseUrl(): string
     {
+        if (! app()->runningInConsole() && app()->bound('request')) {
+            return $this->normalize($this->requestBaseUrl(request()));
+        }
+
         return $this->normalize((string) config('app.url'));
+    }
+
+    private function requestBaseUrl(Request $request): string
+    {
+        $forwardedHost = $this->firstHeaderValue($request, 'X-Forwarded-Host');
+        $forwardedProto = $this->firstHeaderValue($request, 'X-Forwarded-Proto');
+
+        if ($forwardedHost === '' && $forwardedProto === '') {
+            return $request->root();
+        }
+
+        $scheme = $forwardedProto !== '' ? $forwardedProto : $request->getScheme();
+        $host = $forwardedHost !== '' ? $forwardedHost : $request->getHost();
+        $port = $this->firstHeaderValue($request, 'X-Forwarded-Port');
+
+        if ($port !== '' && ! str_contains($host, ':') && ! $this->isDefaultPort($scheme, $port)) {
+            $host .= ':'.$port;
+        }
+
+        return $scheme.'://'.$host;
+    }
+
+    private function firstHeaderValue(Request $request, string $header): string
+    {
+        return trim(explode(',', (string) $request->headers->get($header))[0] ?? '');
+    }
+
+    private function isDefaultPort(string $scheme, string $port): bool
+    {
+        return ($scheme === 'https' && $port === '443') || ($scheme === 'http' && $port === '80');
     }
 
     private function normalize(string $url): string

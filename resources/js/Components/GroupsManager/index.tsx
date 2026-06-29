@@ -328,9 +328,14 @@ export default function GroupsManager({ groups, people }: GroupsManagerProps) {
                     <S.ToolbarTitle>{t('common.groups')}</S.ToolbarTitle>
                     <S.ToolbarDescription>{t('groups.description')}</S.ToolbarDescription>
                 </div>
-                <S.Button type="button" onClick={() => setCreateOpen(true)}>
-                    {t('common.add')}
-                </S.Button>
+                <S.ToolbarActions>
+                    <S.SecondaryButton as="a" href="/groups/csv">
+                        {t('common.exportCsv')}
+                    </S.SecondaryButton>
+                    <S.Button type="button" onClick={() => setCreateOpen(true)}>
+                        {t('common.add')}
+                    </S.Button>
+                </S.ToolbarActions>
             </S.Toolbar>
 
             {createOpen ? (

@@ -21,6 +21,7 @@ services:
       SESSION_DRIVER: database
       CACHE_STORE: database
       QUEUE_CONNECTION: database
+      MUNKI_PACKAGE_X_ACCEL: "true"
       MUNKI_REPO_PATH: /var/www/html/storage/app/munki_repo
       MUNKI_DEFAULT_CATALOG: ${MUNKI_DEFAULT_CATALOG:-production}
       MUNKI_BASE_MANIFEST: ${MUNKI_BASE_MANIFEST:-base}

@@ -344,6 +344,9 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                     <S.SecondaryButton type="button" onClick={() => setMatrixOpen(true)}>
                         {t('packages.crossView')}
                     </S.SecondaryButton>
+                    <S.SecondaryButton as="a" href="/packages/csv">
+                        {t('common.exportCsv')}
+                    </S.SecondaryButton>
                     <S.Button type="button" onClick={() => setCreateOpen(true)}>
                         {t('common.add')}
                     </S.Button>
