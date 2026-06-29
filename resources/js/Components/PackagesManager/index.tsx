@@ -558,16 +558,6 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                                     size="sm"
                                                 />
                                             </S.IconPreviewLink>
-                                            <S.TableIconButton
-                                                as="a"
-                                                href={editPackageIconUrl}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                aria-label={t('common.open')}
-                                                title={t('common.open')}
-                                            >
-                                                <TableIcon name="external" />
-                                            </S.TableIconButton>
                                         </S.FieldActions>
                                     ) : null}
                                 </S.FieldWithActions>
@@ -624,16 +614,6 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                             />
                                             {editPackageFileUrl && editPackageDownloadUrl ? (
                                                 <S.FieldActions>
-                                                    <S.TableIconButton
-                                                        as="a"
-                                                        href={editPackageFileUrl}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        aria-label={t('common.open')}
-                                                        title={t('common.open')}
-                                                    >
-                                                        <TableIcon name="external" />
-                                                    </S.TableIconButton>
                                                     <S.TableIconButton
                                                         as="a"
                                                         href={editPackageDownloadUrl}
