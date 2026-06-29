@@ -693,7 +693,7 @@ export const MatrixRowMeta = styled.span`
 export const MatrixCell = styled.td<{ $action: '-' | 'install' | 'uninstall' | 'inherited'; $disabled: boolean; $inherited: boolean }>`
   background: ${({ $action, $inherited }) => {
     if ($inherited) {
-      return '#f8fafc';
+      return '#d2d8e0';
     }
 
     if ($action === 'install') {
@@ -751,7 +751,7 @@ export const MatrixCellStatus = styled.div`
 export const MatrixCellSelect = styled.select<{ $action: '-' | 'install' | 'uninstall'; $inherited: boolean }>`
   background: ${({ $action, $inherited }) => {
     if ($inherited) {
-      return '#f1f5f9';
+      return '#cbd5e1';
     }
 
     if ($action === 'install') {
@@ -779,6 +779,8 @@ export const MatrixCellSelect = styled.select<{ $action: '-' | 'install' | 'unin
 
     return '#cbd5e1';
   }};
+  appearance: ${({ $inherited }) => ($inherited ? 'none' : 'auto')};
+  border-width: ${({ $inherited }) => ($inherited ? '0px' : '1px')};
   border-radius: 9px;
   color: ${({ $action }) => {
     if ($action === 'install') {
