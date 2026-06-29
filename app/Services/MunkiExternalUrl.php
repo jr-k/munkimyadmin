@@ -57,11 +57,29 @@ class MunkiExternalUrl
 
     private function defaultBaseUrl(): string
     {
+        $configuredUrl = $this->configuredBaseUrl();
+
+        if ($configuredUrl !== null) {
+            return $configuredUrl;
+        }
+
         if (! app()->runningInConsole() && app()->bound('request')) {
             return $this->normalize($this->requestBaseUrl(request()));
         }
 
         return $this->normalize((string) config('app.url'));
+    }
+
+    private function configuredBaseUrl(): ?string
+    {
+        $url = $this->normalize((string) config('app.url'));
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (! is_string($host) || in_array($host, ['localhost', '127.0.0.1', '::1'], true)) {
+            return null;
+        }
+
+        return $url;
     }
 
     private function requestBaseUrl(Request $request): string
@@ -78,12 +96,6 @@ class MunkiExternalUrl
 
         if ($forwardedHost !== '') {
             return $scheme.'://'.$host;
-        }
-
-        $port = $this->firstHeaderValue($request, 'X-Forwarded-Port');
-
-        if ($port !== '' && ! str_contains($host, ':') && ! $this->isDefaultPort($scheme, $port)) {
-            $host .= ':'.$port;
         }
 
         return $scheme.'://'.$host;

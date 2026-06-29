@@ -24,7 +24,6 @@ export default function ExportPanel({ munki }: ExportPanelProps) {
     });
     const effectiveBaseUrl = form.data.override ? form.data.url : munki.externalUrl.defaultUrl;
     const effectiveRepoUrl = `${effectiveBaseUrl.replace(/\/$/, '')}/repo`;
-    const repoLinkUrl = form.isDirty ? effectiveRepoUrl : munki.repoUrl;
 
     function submitSettings(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -41,14 +40,14 @@ export default function ExportPanel({ munki }: ExportPanelProps) {
                     <S.Meta>
                         {t('munki.repoMeta', {
                             repoPath: munki.repoPath,
-                            repoUrl: repoLinkUrl,
+                            repoUrl: effectiveRepoUrl,
                             catalog: munki.catalog,
                             baseManifest: munki.baseManifest,
                         })}
                     </S.Meta>
                 </S.Content>
                 <S.HeroActions>
-                    <S.RepoLink href={repoLinkUrl} target="_blank" rel="noreferrer">
+                    <S.RepoLink href={effectiveRepoUrl} target="_blank" rel="noreferrer">
                         {t('munki.openRepo')}
                     </S.RepoLink>
                     <S.Button type="button" onClick={() => router.post('/munki/export')}>
