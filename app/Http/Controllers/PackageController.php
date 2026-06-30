@@ -211,18 +211,31 @@ class PackageController extends Controller
             $extension = 'pkg';
         }
 
-        $fileName = Str::of($data['munki_name'])
-            ->replaceMatches('/[^A-Za-z0-9._-]+/', '-')
-            ->trim('-')
-            ->append('.'.$extension)
-            ->value();
+        $fileName = $this->originalFileName($file, $data['munki_name'], $extension);
+        $directory = 'packages/'.Str::ulid();
 
-        $path = $file->storeAs('packages', $fileName);
+        $path = $file->storeAs($directory, $fileName);
         $data['pkg_path'] = $path;
         $data['pkg_url'] = null;
 
         $data['hash'] = hash_file('sha256', Storage::disk('local')->path($path));
 
         return $data;
+    }
+
+    private function originalFileName(UploadedFile $file, string $fallbackName, string $extension): string
+    {
+        $originalName = basename(str_replace('\\', '/', $file->getClientOriginalName()));
+        $originalName = str_replace("\0", '', $originalName);
+
+        if ($originalName !== '' && ! in_array($originalName, ['.', '..'], true)) {
+            return $originalName;
+        }
+
+        return Str::of($fallbackName)
+            ->replaceMatches('/[^A-Za-z0-9._-]+/', '-')
+            ->trim('-')
+            ->append('.'.$extension)
+            ->value();
     }
 }

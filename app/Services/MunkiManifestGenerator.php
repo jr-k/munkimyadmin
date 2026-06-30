@@ -133,10 +133,11 @@ class MunkiManifestGenerator
         $packageExtension = $this->packageExtension($package);
 
         if ($package->pkg_path) {
-            $packageFileName = $this->safeFileName($package->munki_name).'.'.$packageExtension;
+            $packageFileName = $this->packageRepositoryLocation($package);
             $storedPackagePath = Storage::disk('local')->path($package->pkg_path);
 
             if (File::exists($storedPackagePath)) {
+                File::ensureDirectoryExists(dirname($packagePath.'/'.$packageFileName));
                 File::copy($storedPackagePath, $packagePath.'/'.$packageFileName);
                 $installerItemLocation = $packageFileName;
             }
@@ -301,6 +302,17 @@ class MunkiManifestGenerator
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
         return $extension === 'dmg' ? 'dmg' : 'pkg';
+    }
+
+    private function packageRepositoryLocation(Package $package): string
+    {
+        $path = str_replace('\\', '/', (string) $package->pkg_path);
+
+        if (Str::startsWith($path, 'packages/')) {
+            return Str::after($path, 'packages/');
+        }
+
+        return basename($path);
     }
 
     private function categoryLabel(?string $category): string
