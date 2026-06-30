@@ -1,3 +1,5 @@
+{{ $appName }} - Configuration Munki
+
 Votre profil de configuration Munki est prêt.
 
 @if ($targetName)

@@ -16,7 +16,8 @@ type PeopleManagerProps = {
 };
 
 type SortDirection = 'asc' | 'desc';
-type PeopleSortKey = 'name' | 'first_name' | 'client_identifier' | 'groups';
+type StoreFilter = 'all' | 'enabled' | 'disabled';
+type PeopleSortKey = 'name' | 'first_name' | 'client_identifier' | 'groups' | 'public_store_access';
 
 export default function PeopleManager({ people, groups }: PeopleManagerProps) {
     const { t } = useI18n();
@@ -33,17 +34,25 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
     const [filterGroupsSearch, setFilterGroupsSearch] = useState('');
     const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
     const [includeWithoutOptionalTeam, setIncludeWithoutOptionalTeam] = useState(false);
+    const [storeFilter, setStoreFilter] = useState<StoreFilter>('all');
     const [search, setSearch] = useState('');
     const [manifestToView, setManifestToView] = useState<{ title: string; manifest: ManifestPreview } | null>(null);
     const [mobileconfigToView, setMobileconfigToView] = useState<Person | null>(null);
     const [personToEdit, setPersonToEdit] = useState<Person | null>(null);
     const [personToDelete, setPersonToDelete] = useState<Person | null>(null);
+    const [personToInvite, setPersonToInvite] = useState<Person | null>(null);
+    const [storeInviteSending, setStoreInviteSending] = useState(false);
+    const [storeInviteStatus, setStoreInviteStatus] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
     const [sort, setSort] = useState<{ key: PeopleSortKey; direction: SortDirection }>({
         key: 'first_name',
         direction: 'asc',
     });
     const [selectedPersonIds, setSelectedPersonIds] = useState<number[]>([]);
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [bulkStoreOpen, setBulkStoreOpen] = useState(false);
+    const [bulkStoreSendSetupLinks, setBulkStoreSendSetupLinks] = useState(false);
+    const [bulkStoreSending, setBulkStoreSending] = useState(false);
+    const [bulkStoreStatus, setBulkStoreStatus] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
     const createGroupsDropdownRef = useRef<HTMLDivElement | null>(null);
     const editGroupsDropdownRef = useRef<HTMLDivElement | null>(null);
     const filterGroupsDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -52,6 +61,7 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
         first_name: '',
         email: '',
         notes: '',
+        public_store_access: false,
         group_ids: [] as number[],
     });
     const editForm = useForm({
@@ -59,6 +69,7 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
         first_name: '',
         email: '',
         notes: '',
+        public_store_access: false,
         group_ids: [] as number[],
     });
 
@@ -108,6 +119,12 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                 return false;
             }
 
+            const storeStatus = person.public_store_access ? 'enabled' : 'disabled';
+
+            if (storeFilter !== 'all' && storeFilter !== storeStatus) {
+                return false;
+            }
+
             if (selectedTeamIds.length === 0 && !includeWithoutOptionalTeam) {
                 return true;
             }
@@ -146,6 +163,10 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
     function sortValue(person: Person, key: PeopleSortKey) {
         if (key === 'groups') {
             return person.groups.map((group) => group.name).join(' ');
+        }
+
+        if (key === 'public_store_access') {
+            return person.public_store_access ? t('people.storeEnabled') : t('people.storeDisabled');
         }
 
         return person[key] ?? '';
@@ -214,7 +235,55 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
             first_name: person.first_name ?? '',
             email: person.email,
             notes: person.notes ?? '',
+            public_store_access: person.public_store_access,
             group_ids: person.groups.filter((group) => !group.is_system).map((group) => group.id),
+        });
+    }
+
+    function sendStoreInvite(person: Person) {
+        setStoreInviteStatus(null);
+        router.post(`/people/${person.id}/store-invite`, {}, {
+            preserveScroll: true,
+            onStart: () => setStoreInviteSending(true),
+            onSuccess: (page) => {
+                const flash = page.props.flash as { error?: unknown };
+
+                setStoreInviteStatus(flash.error
+                    ? { tone: 'error', message: t('people.storeInviteError') }
+                    : { tone: 'success', message: t('people.storeInviteSuccess') });
+            },
+            onError: () => setStoreInviteStatus({ tone: 'error', message: t('people.storeInviteError') }),
+            onFinish: () => setStoreInviteSending(false),
+        });
+    }
+
+    function submitBulkStoreAccess() {
+        setBulkStoreStatus(null);
+        router.post('/people/bulk/store-access', {
+            ids: selectedPersonIds,
+            send_setup_links: bulkStoreSendSetupLinks,
+        }, {
+            preserveScroll: true,
+            onStart: () => setBulkStoreSending(true),
+            onSuccess: (page) => {
+                const flash = page.props.flash as { error?: unknown };
+
+                if (flash.error) {
+                    setBulkStoreStatus({ tone: 'error', message: t('people.bulkStoreError') });
+                    return;
+                }
+
+                setBulkStoreStatus({
+                    tone: 'success',
+                    message: bulkStoreSendSetupLinks
+                        ? t('people.bulkStoreSuccessWithLinks', { count: selectedPersonIds.length })
+                        : t('people.bulkStoreSuccess', { count: selectedPersonIds.length }),
+                });
+                setBulkStoreOpen(false);
+                setSelectedPersonIds([]);
+            },
+            onError: () => setBulkStoreStatus({ tone: 'error', message: t('people.bulkStoreError') }),
+            onFinish: () => setBulkStoreSending(false),
         });
     }
 
@@ -256,6 +325,7 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
         setSearch('');
         setSelectedTeamIds([]);
         setIncludeWithoutOptionalTeam(false);
+        setStoreFilter('all');
         setFilterGroupsOpen(false);
         setFilterGroupsSearch('');
     }
@@ -474,6 +544,21 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                                     />
                                 </FormField>
                             </S.Full>
+                            <S.Full as={S.SwitchBlock}>
+                                <S.SwitchLabel>
+                                    <S.SwitchInput
+                                        type="checkbox"
+                                        checked={form.data.public_store_access}
+                                        onChange={(event) => form.setData('public_store_access', event.target.checked)}
+                                    />
+                                    <S.SwitchTrack aria-hidden="true">
+                                        <S.SwitchThumb />
+                                    </S.SwitchTrack>
+                                    <S.SwitchText>
+                                        <strong>{t('people.publicStoreAccess')}</strong>
+                                    </S.SwitchText>
+                                </S.SwitchLabel>
+                            </S.Full>
                             <S.ModalActions>
                                 <S.ResetButton type="button" onClick={resetCreateForm}>
                                     {t('common.reset')}
@@ -494,9 +579,21 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                 </div>
                 <S.FilterControls>
                     {canUpdatePeople && selectedPersonIds.length > 0 ? (
-                        <S.DangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
-                            {t('common.bulkDelete', { count: selectedPersonIds.length })}
-                        </S.DangerButton>
+                        <>
+                            <S.BulkButton
+                                type="button"
+                                onClick={() => {
+                                    setBulkStoreStatus(null);
+                                    setBulkStoreSendSetupLinks(false);
+                                    setBulkStoreOpen(true);
+                                }}
+                            >
+                                {t('people.bulkStoreAccess', { count: selectedPersonIds.length })}
+                            </S.BulkButton>
+                            <S.BulkDangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
+                                {t('common.bulkDelete', { count: selectedPersonIds.length })}
+                            </S.BulkDangerButton>
+                        </>
                     ) : null}
                     <S.FilterControl>
                         <span>{t('common.search')}</span>
@@ -563,6 +660,14 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                             ) : null}
                         </S.FilterDropdown>
                     </S.FilterControl>
+                    <S.FilterControl>
+                        <span>{t('common.store')}</span>
+                        <S.FilterSelect value={storeFilter} onChange={(event) => setStoreFilter(event.target.value as StoreFilter)}>
+                            <option value="all">{t('common.all')}</option>
+                            <option value="enabled">{t('people.storeEnabled')}</option>
+                            <option value="disabled">{t('people.storeDisabled')}</option>
+                        </S.FilterSelect>
+                    </S.FilterControl>
                     <S.DangerButton type="button" onClick={resetFilters} aria-label={t('common.reset')} title={t('common.reset')}>
                         <span aria-hidden="true">↺</span>
                     </S.DangerButton>
@@ -615,13 +720,18 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                             </th>
                             <S.CenterHeader>{t('common.manifest')}</S.CenterHeader>
                             <S.CenterHeader>{t('common.mobileconfig')}</S.CenterHeader>
+                            <S.CenterHeader>
+                                <S.SortButton type="button" onClick={() => changeSort('public_store_access')}>
+                                    {t('common.store')}{sortIndicator('public_store_access')}
+                                </S.SortButton>
+                            </S.CenterHeader>
                             {canUpdatePeople ? <th>{t('common.actions')}</th> : null}
                         </tr>
                     </thead>
                     <tbody>
                         {visiblePeople.length === 0 ? (
                             <tr>
-                                <S.EmptyCell colSpan={canUpdatePeople ? 8 : 6}>{t('people.noMatch')}</S.EmptyCell>
+                                <S.EmptyCell colSpan={canUpdatePeople ? 9 : 7}>{t('people.noMatch')}</S.EmptyCell>
                             </tr>
                         ) : (
                             paginatedPeople.map((person) => (
@@ -669,6 +779,22 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                                         >
                                             <TableIcon name="download" />
                                         </S.TableIconButton>
+                                    </S.CenterCell>
+                                    <S.CenterCell>
+                                        {person.public_store_access ? (
+                                            <S.TableIconButton
+                                                type="button"
+                                                $tone="store"
+                                                aria-label={t('people.sendStoreInvite')}
+                                                title={t('people.sendStoreInvite')}
+                                                onClick={() => {
+                                                    setStoreInviteStatus(null);
+                                                    setPersonToInvite(person);
+                                                }}
+                                            >
+                                                <TableIcon name="store" />
+                                            </S.TableIconButton>
+                                        ) : null}
                                     </S.CenterCell>
                                     {canUpdatePeople ? (
                                         <td>
@@ -854,12 +980,114 @@ export default function PeopleManager({ people, groups }: PeopleManagerProps) {
                                     />
                                 </FormField>
                             </S.Full>
+                            <S.Full as={S.SwitchBlock}>
+                                <S.SwitchLabel>
+                                    <S.SwitchInput
+                                        type="checkbox"
+                                        checked={editForm.data.public_store_access}
+                                        onChange={(event) => editForm.setData('public_store_access', event.target.checked)}
+                                    />
+                                    <S.SwitchTrack aria-hidden="true">
+                                        <S.SwitchThumb />
+                                    </S.SwitchTrack>
+                                    <S.SwitchText>
+                                        <strong>{t('people.publicStoreAccess')}</strong>
+                                    </S.SwitchText>
+                                </S.SwitchLabel>
+                            </S.Full>
                             <S.ModalActions>
                                 <S.Button type="submit" disabled={editForm.processing}>
                                     {t('common.save')}
                                 </S.Button>
                             </S.ModalActions>
                         </S.Form>
+                    </S.EditDialog>
+                </S.ModalOverlay>
+            ) : null}
+            {canUpdatePeople && personToInvite ? (
+                <S.ModalOverlay
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !storeInviteSending) {
+                            setPersonToInvite(null);
+                        }
+                    }}
+                >
+                    <S.EditDialog onClick={(event) => event.stopPropagation()}>
+                        <S.ModalHeader>
+                            <div>
+                                <S.ModalTitle>{t('people.storeInviteTitle')}</S.ModalTitle>
+                                <S.ModalDescription>
+                                    {t('people.storeInviteDescription', { email: personToInvite.email })}
+                                </S.ModalDescription>
+                            </div>
+                            <S.IconButton
+                                type="button"
+                                onClick={() => setPersonToInvite(null)}
+                                disabled={storeInviteSending}
+                                aria-label={t('common.close')}
+                            >
+                                ×
+                            </S.IconButton>
+                        </S.ModalHeader>
+                        {storeInviteStatus ? (
+                            <S.InviteStatus $tone={storeInviteStatus.tone}>
+                                {storeInviteStatus.message}
+                            </S.InviteStatus>
+                        ) : null}
+                        <S.ModalActions>
+                            <S.Button type="button" onClick={() => sendStoreInvite(personToInvite)} disabled={storeInviteSending}>
+                                {storeInviteSending ? <S.ButtonSpinner aria-label={t('people.storeInviteSending')} /> : null}
+                                {storeInviteSending ? t('people.storeInviteSending') : t('people.sendStoreInvite')}
+                            </S.Button>
+                        </S.ModalActions>
+                    </S.EditDialog>
+                </S.ModalOverlay>
+            ) : null}
+            {canUpdatePeople && bulkStoreOpen ? (
+                <S.ModalOverlay
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !bulkStoreSending) {
+                            setBulkStoreOpen(false);
+                        }
+                    }}
+                >
+                    <S.EditDialog onClick={(event) => event.stopPropagation()}>
+                        <S.ModalHeader>
+                            <div>
+                                <S.ModalTitle>{t('people.bulkStoreTitle')}</S.ModalTitle>
+                                <S.ModalDescription>
+                                    {t('people.bulkStoreDescription', { count: selectedPersonIds.length })}
+                                </S.ModalDescription>
+                            </div>
+                            <S.IconButton
+                                type="button"
+                                onClick={() => setBulkStoreOpen(false)}
+                                disabled={bulkStoreSending}
+                                aria-label={t('common.close')}
+                            >
+                                ×
+                            </S.IconButton>
+                        </S.ModalHeader>
+                        <S.InviteOption>
+                            <input
+                                type="checkbox"
+                                checked={bulkStoreSendSetupLinks}
+                                disabled={bulkStoreSending}
+                                onChange={(event) => setBulkStoreSendSetupLinks(event.target.checked)}
+                            />
+                            <span>{t('people.bulkStoreSendLinks')}</span>
+                        </S.InviteOption>
+                        {bulkStoreStatus ? (
+                            <S.InviteStatus $tone={bulkStoreStatus.tone}>
+                                {bulkStoreStatus.message}
+                            </S.InviteStatus>
+                        ) : null}
+                        <S.ModalActions>
+                            <S.Button type="button" onClick={submitBulkStoreAccess} disabled={bulkStoreSending || selectedPersonIds.length === 0}>
+                                {bulkStoreSending ? <S.ButtonSpinner aria-label={t('people.bulkStoreSending')} /> : null}
+                                {bulkStoreSending ? t('people.bulkStoreSending') : t('people.bulkStoreConfirm')}
+                            </S.Button>
+                        </S.ModalActions>
                     </S.EditDialog>
                 </S.ModalOverlay>
             ) : null}

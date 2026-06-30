@@ -12,6 +12,10 @@ class Assignment extends Model
 
     public const ACTION_UNINSTALL = 'uninstall';
 
+    public const ACTION_ON_DEMAND = 'on_demand';
+
+    public const ACTION_OPTIONAL_INSTALL = 'optional_install';
+
     protected $fillable = [
         'package_id',
         'assignable_type',

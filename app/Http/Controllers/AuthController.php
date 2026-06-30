@@ -17,12 +17,16 @@ class AuthController extends Controller
 {
     public function show(Request $request): Response|\Illuminate\Http\RedirectResponse
     {
+        if (config('app.safe_mode')) {
+            return redirect()->route('dashboard');
+        }
+
         if (! $this->ownerExists()) {
             return redirect()->route('onboarding');
         }
 
         if (Auth::check()) {
-            return redirect()->route('dashboard');
+            return redirect()->route($request->user()?->isStoreOnly() ? 'store.index' : 'dashboard');
         }
 
         return Inertia::render('Login');
@@ -30,6 +34,10 @@ class AuthController extends Controller
 
     public function login(Request $request): \Illuminate\Http\RedirectResponse
     {
+        if (config('app.safe_mode')) {
+            return redirect()->route('dashboard');
+        }
+
         if (! $this->ownerExists()) {
             return redirect()->route('onboarding');
         }
@@ -46,9 +54,10 @@ class AuthController extends Controller
         }
 
         $request->session()->regenerate();
-        $request->user()?->forceFill(['last_login_at' => now()])->save();
+        $user = $request->user()?->loadMissing('permissions', 'person');
+        $user?->forceFill(['last_login_at' => now()])->save();
 
-        return redirect()->route('dashboard');
+        return redirect()->route($user?->isStoreOnly() ? 'store.index' : 'dashboard');
     }
 
     public function forgotPasswordForm(): Response|\Illuminate\Http\RedirectResponse

@@ -7,9 +7,10 @@ type ConfirmModalProps = {
     title: string;
     description: string;
     confirmLabel?: string;
-    cancelLabel?: string;
+    confirmLoading?: boolean;
     requireConfirmationCheckbox?: boolean;
     confirmationLabel?: string;
+    tone?: 'danger' | 'success';
     onClose: () => void;
     onConfirm: () => void;
 };
@@ -19,9 +20,10 @@ export default function ConfirmModal({
     title,
     description,
     confirmLabel,
-    cancelLabel,
+    confirmLoading = false,
     requireConfirmationCheckbox = false,
     confirmationLabel,
+    tone = 'danger',
     onClose,
     onConfirm,
 }: ConfirmModalProps) {
@@ -68,8 +70,13 @@ export default function ConfirmModal({
                 }
             }}
         >
-            <S.Dialog role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" onClick={(event) => event.stopPropagation()}>
-                <S.Icon aria-hidden="true">!</S.Icon>
+            <S.Dialog $tone={tone} role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" onClick={(event) => event.stopPropagation()}>
+                <S.Header>
+                    <S.Icon $tone={tone} aria-hidden="true">{tone === 'success' ? '✓' : '!'}</S.Icon>
+                    <S.CloseButton type="button" onClick={onClose} aria-label={t('common.close')}>
+                        ×
+                    </S.CloseButton>
+                </S.Header>
                 <S.Content>
                     <S.Title id="confirm-modal-title">{title}</S.Title>
                     <S.Description>{description}</S.Description>
@@ -86,15 +93,14 @@ export default function ConfirmModal({
                     ) : null}
                 </S.Content>
                 <S.Actions>
-                    <S.CancelButton type="button" onClick={onClose}>
-                        {cancelLabel ?? t('common.cancel')}
-                    </S.CancelButton>
                     <S.ConfirmButton
+                        $tone={tone}
                         type="button"
                         ref={confirmButtonRef}
-                        disabled={requireConfirmationCheckbox && !confirmed}
+                        disabled={confirmLoading || (requireConfirmationCheckbox && !confirmed)}
                         onClick={onConfirm}
                     >
+                        {confirmLoading ? <S.ButtonSpinner aria-label={confirmLabel ?? t('common.delete')} /> : null}
                         {confirmLabel ?? t('common.delete')}
                     </S.ConfirmButton>
                 </S.Actions>

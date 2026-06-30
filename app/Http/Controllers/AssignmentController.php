@@ -113,7 +113,12 @@ class AssignmentController extends Controller
             'package_ids.*' => ['integer', 'exists:packages,id'],
             'targets' => ['required', 'array', 'min:1'],
             'targets.*' => ['string', 'regex:/^(person|group):[0-9]+$/'],
-            'action' => ['required', Rule::in([Assignment::ACTION_INSTALL, Assignment::ACTION_UNINSTALL])],
+            'action' => ['required', Rule::in([
+                Assignment::ACTION_INSTALL,
+                Assignment::ACTION_UNINSTALL,
+                Assignment::ACTION_ON_DEMAND,
+                Assignment::ACTION_OPTIONAL_INSTALL,
+            ])],
         ]);
 
         foreach (array_unique($data['targets']) as $target) {
@@ -133,6 +138,45 @@ class AssignmentController extends Controller
         }
 
         return back()->with('success', ['key' => 'flash.assignmentSaved']);
+    }
+
+    public function update(Request $request, Assignment $assignment): \Illuminate\Http\RedirectResponse
+    {
+        $data = $request->validate([
+            'package_id' => ['required', 'integer', 'exists:packages,id'],
+            'target' => ['required', 'string', 'regex:/^(person|group):[0-9]+$/'],
+            'action' => ['required', Rule::in([
+                Assignment::ACTION_INSTALL,
+                Assignment::ACTION_UNINSTALL,
+                Assignment::ACTION_ON_DEMAND,
+                Assignment::ACTION_OPTIONAL_INSTALL,
+            ])],
+        ]);
+
+        [$targetType, $targetId] = explode(':', $data['target'], 2);
+        $assignableClass = $targetType === 'person' ? Person::class : Group::class;
+        $assignableClass::query()->findOrFail($targetId);
+
+        $existingAssignment = Assignment::query()
+            ->where('package_id', $data['package_id'])
+            ->where('assignable_type', $assignableClass)
+            ->where('assignable_id', $targetId)
+            ->whereKeyNot($assignment->getKey())
+            ->first();
+
+        if ($existingAssignment) {
+            $existingAssignment->update(['action' => $data['action']]);
+            Assignment::query()->whereKey($assignment->getKey())->delete();
+        } else {
+            $assignment->update([
+                'package_id' => $data['package_id'],
+                'assignable_type' => $assignableClass,
+                'assignable_id' => $targetId,
+                'action' => $data['action'],
+            ]);
+        }
+
+        return back()->with('success', ['key' => 'flash.assignmentUpdated']);
     }
 
     public function destroy(Assignment $assignment): \Illuminate\Http\RedirectResponse

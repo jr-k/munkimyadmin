@@ -112,7 +112,15 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+        'name' => (static function (): string {
+            $name = env('MAIL_FROM_NAME');
+
+            if ($name === null || $name === '${APP_NAME}') {
+                return env('APP_DISPLAY_NAME', env('APP_NAME', 'Laravel'));
+            }
+
+            return $name;
+        })(),
     ],
 
 ];

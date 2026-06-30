@@ -4,12 +4,15 @@ import FormField from '../../Components/FormField';
 import LogoMark from '../../Components/LogoMark';
 import { useI18n } from '../../i18n';
 import { PageProps } from '../../types';
+import AuthLanguageSelect from './AuthLanguageSelect';
 import * as S from './styled';
 
 export default function Login() {
     const { t } = useI18n();
     const { props } = usePage<PageProps>();
     const displayName = props.app.display_name;
+    const mainColor = props.app.main_color;
+    const logoUrl = props.app.logo_url;
     const form = useForm({
         email: '',
         password: '',
@@ -23,9 +26,10 @@ export default function Login() {
     return (
         <S.LoginContainer>
             <Head title={t('login.title')} />
+            <AuthLanguageSelect />
             <S.Panel onSubmit={submit}>
                 <S.Brand>
-                    <LogoMark size={42} />
+                    <LogoMark size={42} color={mainColor} logoUrl={logoUrl} />
                     <S.Title>{displayName}</S.Title>
                 </S.Brand>
                 <S.Help>{t('login.help')}</S.Help>
@@ -45,11 +49,11 @@ export default function Login() {
                         onChange={(event) => form.setData('password', event.target.value)}
                     />
                 </FormField>
-                <S.Button type="submit" disabled={form.processing}>
+                <S.Button type="submit" disabled={form.processing} $mainColor={mainColor}>
                     {t('login.submit')}
                 </S.Button>
                 <S.LinkRow>
-                    <S.TextLink href="/forgot-password">{t('login.forgotPassword')}</S.TextLink>
+                    <S.TextLink href="/forgot-password" $mainColor={mainColor}>{t('login.forgotPassword')}</S.TextLink>
                 </S.LinkRow>
             </S.Panel>
         </S.LoginContainer>

@@ -4,7 +4,7 @@ import * as S from './styled';
 type PackageIconProps = {
     iconUrl?: string | null;
     name: string;
-    size?: 'sm' | 'md';
+    size?: 'sm' | 'md' | 'card' | 'lg';
 };
 
 export default function PackageIcon({ iconUrl, name, size = 'md' }: PackageIconProps) {

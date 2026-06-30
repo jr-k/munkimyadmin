@@ -52,9 +52,9 @@ export const SectionTitle = styled.div`
   text-transform: uppercase;
 `;
 
-export const NavLink = styled(Link)<{ $active?: boolean }>`
-  background: ${({ $active }) => ($active ? 'rgb(255 255 255 / 16%)' : 'transparent')};
-  border: 1px solid ${({ $active }) => ($active ? 'rgb(255 255 255 / 16%)' : 'transparent')};
+export const NavLink = styled(Link)<{ $active?: boolean; $mainColor: string }>`
+  background: ${({ $active, $mainColor }) => ($active ? `${$mainColor}55` : 'transparent')};
+  border: 1px solid ${({ $active, $mainColor }) => ($active ? `${$mainColor}88` : 'transparent')};
   border-radius: 14px;
   color: #ffffff;
   display: block;
@@ -77,27 +77,45 @@ export const SidebarFooter = styled.div`
   }
 `;
 
-export const LanguageSwitcher = styled.div`
-  align-items: center;
-  display: inline-flex;
-  gap: 4px;
+export const LanguageSelectWrapper = styled.div`
+  position: relative;
+  width: fit-content;
+
+  &::after {
+    color: #94a3b8;
+    content: '▾';
+    font-size: 12px;
+    pointer-events: none;
+    position: absolute;
+    right: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
 `;
 
-export const LanguageButton = styled.button<{ $active: boolean }>`
-  align-items: center;
-  background: ${({ $active }) => ($active ? 'rgb(255 255 255 / 14%)' : 'transparent')};
-  border: 1px solid ${({ $active }) => ($active ? 'rgb(255 255 255 / 16%)' : 'transparent')};
-  border-radius: 999px;
-  color: ${({ $active }) => ($active ? '#ffffff' : '#94a3b8')};
-  display: inline-flex;
+export const LanguageSelect = styled.select`
+  appearance: none;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 12px;
+  color: #ffffff;
+  cursor: pointer;
   font-size: 12px;
   font-weight: 900;
-  gap: 5px;
-  padding: 6px 8px;
+  min-height: 34px;
+  padding: 0 30px 0 11px;
+
+  option {
+    color: #0f172a;
+  }
 
   &:hover {
-    background: rgb(255 255 255 / 10%);
-    color: #ffffff;
+    background: rgb(255 255 255 / 12%);
+  }
+
+  &:focus {
+    border-color: rgb(255 255 255 / 28%);
+    outline: 3px solid rgb(255 255 255 / 12%);
   }
 `;
 
@@ -167,6 +185,29 @@ export const Main = styled.main`
 
   @media (max-width: 640px) {
     padding: 16px;
+  }
+`;
+
+export const SafeModeBanner = styled.div`
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 16px;
+  color: #9a3412;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+
+  strong {
+    color: #c2410c;
+    font-size: 14px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  span {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
   }
 `;
 

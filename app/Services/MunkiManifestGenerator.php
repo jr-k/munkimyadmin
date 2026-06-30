@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Group;
+use App\Models\Assignment;
 use App\Models\Package;
 use App\Models\Person;
 use DOMDocument;
@@ -197,14 +198,21 @@ class MunkiManifestGenerator
     {
         $installs = [];
         $uninstalls = [];
+        $optionalInstalls = [];
+        $defaultInstalls = [];
 
         foreach ($assignments as $assignment) {
             if (! $assignment->package || ! $assignment->package->active) {
                 continue;
             }
 
-            if ($assignment->action === 'uninstall') {
+            if ($assignment->action === Assignment::ACTION_UNINSTALL) {
                 $uninstalls[] = $assignment->package->munki_name;
+            } elseif ($assignment->action === Assignment::ACTION_OPTIONAL_INSTALL) {
+                $optionalInstalls[] = $assignment->package->munki_name;
+                $defaultInstalls[] = $assignment->package->munki_name;
+            } elseif ($assignment->action === Assignment::ACTION_ON_DEMAND) {
+                $optionalInstalls[] = $assignment->package->munki_name;
             } else {
                 $installs[] = $assignment->package->munki_name;
             }
@@ -215,6 +223,8 @@ class MunkiManifestGenerator
             'included_manifests' => array_values(array_unique($includedManifests)),
             'managed_installs' => array_values(array_unique($installs)),
             'managed_uninstalls' => array_values(array_unique($uninstalls)),
+            'optional_installs' => array_values(array_unique($optionalInstalls)),
+            'default_installs' => array_values(array_unique($defaultInstalls)),
         ];
 
         $this->writePlist($path, $manifest);

@@ -1,4 +1,4 @@
-import { PropsWithChildren } from 'react';
+import { type ChangeEvent, PropsWithChildren } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import LogoMark from '../LogoMark';
 import { useI18n } from '../../i18n';
@@ -14,7 +14,10 @@ export default function AppLayout({ adminEmail, children }: AppLayoutProps) {
     const { locale, setLocale, t } = useI18n();
     const { props, url } = usePage<PageProps>();
     const displayName = props.app.display_name;
+    const mainColor = props.app.main_color;
+    const logoUrl = props.app.logo_url;
     const version = props.app.version;
+    const safeMode = props.app.safe_mode;
     const signedInEmail = adminEmail ?? props.auth.user?.email ?? 'admin';
     const sections = [
         {
@@ -29,6 +32,7 @@ export default function AppLayout({ adminEmail, children }: AppLayoutProps) {
             title: t('layout.softwareSection'),
             links: [
                 { href: '/packages', label: t('common.packages'), visible: can(props, 'packages', 'read') },
+                { href: '/store', label: t('common.store'), visible: can(props, 'store', 'read') && props.auth.canAccessStore },
             ].filter((link) => link.visible),
         },
         {
@@ -42,6 +46,7 @@ export default function AppLayout({ adminEmail, children }: AppLayoutProps) {
             title: t('layout.administrationSection'),
             links: [
                 { href: '/users', label: t('common.users'), visible: can(props, 'users', 'manage') },
+                { href: '/settings', label: t('common.settings'), visible: props.auth.isAdmin },
             ].filter((link) => link.visible),
         },
     ].filter((section) => section.links.length > 0);
@@ -50,7 +55,7 @@ export default function AppLayout({ adminEmail, children }: AppLayoutProps) {
         <S.AppLayoutContainer>
             <S.Sidebar>
                 <S.Brand>
-                    <LogoMark />
+                    <LogoMark color={mainColor} logoUrl={logoUrl} />
                     <div>
                         <S.Title>{displayName}</S.Title>
                     </div>
@@ -61,7 +66,7 @@ export default function AppLayout({ adminEmail, children }: AppLayoutProps) {
                         <S.NavSection key={section.title}>
                             <S.SectionTitle>{section.title}</S.SectionTitle>
                             {section.links.map((link) => (
-                                <S.NavLink key={link.href} href={link.href} $active={url.startsWith(link.href)}>
+                                <S.NavLink key={link.href} href={link.href} $active={url.startsWith(link.href)} $mainColor={mainColor}>
                                     {link.label}
                                 </S.NavLink>
                             ))}
@@ -70,28 +75,16 @@ export default function AppLayout({ adminEmail, children }: AppLayoutProps) {
                 </S.Navigation>
 
                 <S.SidebarFooter>
-                    <S.LanguageSwitcher aria-label={t('layout.language')}>
-                        <S.LanguageButton
-                            type="button"
-                            $active={locale === 'en'}
-                            onClick={() => setLocale('en')}
-                            aria-label="English"
-                            title="English"
+                    <S.LanguageSelectWrapper>
+                        <S.LanguageSelect
+                            value={locale}
+                            onChange={(event: ChangeEvent<HTMLSelectElement>) => setLocale(event.target.value as 'en' | 'fr')}
+                            aria-label={t('layout.language')}
                         >
-                            <span aria-hidden="true">🇬🇧</span>
-                            EN
-                        </S.LanguageButton>
-                        <S.LanguageButton
-                            type="button"
-                            $active={locale === 'fr'}
-                            onClick={() => setLocale('fr')}
-                            aria-label="Français"
-                            title="Français"
-                        >
-                            <span aria-hidden="true">🇫🇷</span>
-                            FR
-                        </S.LanguageButton>
-                    </S.LanguageSwitcher>
+                            <option value="en">🇬🇧 EN</option>
+                            <option value="fr">🇫🇷 FR</option>
+                        </S.LanguageSelect>
+                    </S.LanguageSelectWrapper>
                     <S.UserFooter>
                         <S.SignedIn>
                             <span>{t('layout.connectedAs')}</span>
@@ -115,7 +108,15 @@ export default function AppLayout({ adminEmail, children }: AppLayoutProps) {
                     </S.ProjectMeta>
                 </S.SidebarFooter>
             </S.Sidebar>
-            <S.Main>{children}</S.Main>
+            <S.Main>
+                {safeMode ? (
+                    <S.SafeModeBanner role="alert">
+                        <strong>{t('layout.safeModeTitle')}</strong>
+                        <span>{t('layout.safeModeMessage')}</span>
+                    </S.SafeModeBanner>
+                ) : null}
+                {children}
+            </S.Main>
         </S.AppLayoutContainer>
     );
 }

@@ -25,8 +25,15 @@ export type Person = {
     email: string;
     client_identifier: string;
     notes: string | null;
+    public_store_access: boolean;
     groups: Group[];
     manifest: ManifestPreview;
+    store_user: {
+        id: number;
+        email: string;
+        is_store_account: boolean;
+        store_account_enabled: boolean;
+    } | null;
 };
 
 export type Package = {
@@ -39,18 +46,22 @@ export type Package = {
     version: string | null;
     icon_path: string | null;
     icon_url: string | null;
+    store_url: string;
     pkg_path: string | null;
     pkg_file_url: string | null;
     hash: string;
     pkg_url: string | null;
     active: boolean;
+    on_public_store: boolean;
     assignments_count?: number;
     assignments?: PackageAssignment[];
 };
 
+export type AssignmentAction = 'install' | 'uninstall' | 'on_demand' | 'optional_install';
+
 export type PackageAssignment = {
     id: number;
-    action: 'install' | 'uninstall';
+    action: AssignmentAction;
     target: {
         id: number | null;
         type: 'person' | 'group';
@@ -61,7 +72,7 @@ export type PackageAssignment = {
 
 export type Assignment = {
     id: number;
-    action: 'install' | 'uninstall';
+    action: AssignmentAction;
     package: {
         id: number | null;
         name: string | null;
@@ -110,6 +121,14 @@ export type ManagedUser = {
     email: string;
     role: UserRole;
     is_owner: boolean;
+    person_id: number | null;
+    is_store_account: boolean;
+    store_account_enabled: boolean;
+    person: {
+        id: number;
+        name: string;
+        email: string;
+    } | null;
     permissions: string[];
     created_at: string | null;
     last_login_at: string | null;
@@ -123,14 +142,29 @@ export type PageProps = {
             email: string;
             role: UserRole;
             is_owner: boolean;
+            person_id: number | null;
+            is_store_account: boolean;
+            store_account_enabled: boolean;
         } | null;
         permissions: string[];
         isAdmin: boolean;
         isOwner: boolean;
+        canAccessStore: boolean;
+        isStoreOnly: boolean;
     };
     app: {
         display_name: string;
+        main_color: string;
+        logo_url: string | null;
+        preset_colors: string[];
+        public_store: {
+            name: string;
+            main_color: string;
+            logo_url: string | null;
+            preset_colors: string[];
+        };
         version: string;
+        safe_mode: boolean;
     };
     flash: {
         success?: FlashMessagePayload;

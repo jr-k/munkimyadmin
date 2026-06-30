@@ -177,12 +177,21 @@ export const DropdownOption = styled.button<{ $selected: boolean }>`
 `;
 
 export const Button = styled.button`
+  align-items: center;
   background: #2563eb;
   border: 0;
   border-radius: 12px;
   color: #ffffff;
+  display: inline-flex;
+  gap: 8px;
   font-weight: 800;
+  justify-content: center;
   padding: 11px 14px;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.75;
+  }
 `;
 
 export const List = styled.div`
@@ -341,6 +350,10 @@ export const EmptyCell = styled.td`
 
 export const CenterHeader = styled.th`
   text-align: center !important;
+
+  ${SortButton} {
+    justify-content: center;
+  }
 `;
 
 export const CenterCell = styled.td`
@@ -375,14 +388,104 @@ export const SecondaryButton = styled.button`
   border-radius: 10px;
   color: #3730a3;
   display: inline-flex;
+  font-size: 13px;
   font-weight: 700;
   justify-content: center;
   padding: 9px 12px;
   text-decoration: none;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+`;
+
+export const BulkButton = styled(SecondaryButton)`
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+  height: 32px;
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
 `;
 
 export const ResetButton = styled(SecondaryButton)`
   margin-right: auto;
+`;
+
+export const SwitchInput = styled.input`
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+`;
+
+export const SwitchTrack = styled.span`
+  background: #cbd5e1;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 12%);
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 3px;
+  transition: background 160ms ease, box-shadow 160ms ease;
+  width: 54px;
+`;
+
+export const SwitchThumb = styled.span`
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgb(15 23 42 / 20%);
+  height: 24px;
+  transition: transform 160ms ease;
+  width: 24px;
+`;
+
+export const SwitchLabel = styled.label`
+  align-items: center;
+  display: flex;
+  gap: 12px;
+
+  ${SwitchInput}:checked + ${SwitchTrack} {
+    background: #2563eb;
+    box-shadow: 0 8px 18px rgb(37 99 235 / 20%);
+  }
+
+  ${SwitchInput}:checked + ${SwitchTrack} ${SwitchThumb} {
+    transform: translateX(24px);
+  }
+
+  ${SwitchInput}:focus-visible + ${SwitchTrack} {
+    outline: 3px solid rgb(147 197 253 / 70%);
+    outline-offset: 2px;
+  }
+`;
+
+export const SwitchBlock = styled.div`
+  margin-bottom: 12px;
+`;
+
+export const SwitchText = styled.span`
+  display: grid;
+  gap: 2px;
+
+  strong {
+    color: #0f172a;
+  }
+`;
+
+export const StoreStatusBadge = styled.span<{ $active: boolean }>`
+  align-items: center;
+  background: ${({ $active }) => ($active ? '#dcfce7' : '#fee2e2')};
+  border-radius: 999px;
+  color: ${({ $active }) => ($active ? '#166534' : '#991b1b')};
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  height: 24px;
+  justify-content: center;
+  line-height: 1;
+  width: 24px;
 `;
 
 export const DangerButton = styled.button`
@@ -394,12 +497,45 @@ export const DangerButton = styled.button`
   padding: 9px 12px;
 `;
 
-export const TableIconButton = styled.button<{ $tone?: 'danger' | 'neutral' }>`
+export const BulkDangerButton = styled(DangerButton)`
   align-items: center;
-  background: ${({ $tone }) => ($tone === 'danger' ? '#fee2e2' : '#eef2ff')};
+  border-radius: 9px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
+`;
+
+export const TableIconButton = styled.button<{ $tone?: 'danger' | 'neutral' | 'store' }>`
+  align-items: center;
+  background: ${({ $tone }) => {
+    if ($tone === 'danger') {
+      return '#fee2e2';
+    }
+
+    if ($tone === 'store') {
+      return '#dbeafe';
+    }
+
+    return '#eef2ff';
+  }};
   border: 0;
   border-radius: 10px;
-  color: ${({ $tone }) => ($tone === 'danger' ? '#991b1b' : '#3730a3')};
+  color: ${({ $tone }) => {
+    if ($tone === 'danger') {
+      return '#991b1b';
+    }
+
+    if ($tone === 'store') {
+      return '#1d4ed8';
+    }
+
+    return '#3730a3';
+  }};
   display: inline-flex;
   height: 38px;
   justify-content: center;
@@ -408,7 +544,17 @@ export const TableIconButton = styled.button<{ $tone?: 'danger' | 'neutral' }>`
   width: 38px;
 
   &:hover {
-    background: ${({ $tone }) => ($tone === 'danger' ? '#fecaca' : '#e0e7ff')};
+    background: ${({ $tone }) => {
+      if ($tone === 'danger') {
+        return '#fecaca';
+      }
+
+      if ($tone === 'store') {
+        return '#bfdbfe';
+      }
+
+      return '#e0e7ff';
+    }};
   }
 `;
 
@@ -483,6 +629,49 @@ export const ModalActions = styled.div`
   gap: 10px;
   grid-column: 1 / -1;
   justify-content: flex-end;
+`;
+
+export const InviteStatus = styled.div<{ $tone: 'success' | 'error' }>`
+  background: ${({ $tone }) => ($tone === 'success' ? '#dcfce7' : '#fee2e2')};
+  border: 1px solid ${({ $tone }) => ($tone === 'success' ? '#86efac' : '#fecaca')};
+  border-radius: 14px;
+  color: ${({ $tone }) => ($tone === 'success' ? '#166534' : '#991b1b')};
+  font-size: 14px;
+  font-weight: 800;
+  padding: 12px 14px;
+`;
+
+export const InviteOption = styled.label`
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  color: #334155;
+  display: flex;
+  font-size: 14px;
+  font-weight: 800;
+  gap: 10px;
+  padding: 12px 14px;
+
+  input {
+    accent-color: #2563eb;
+  }
+`;
+
+export const ButtonSpinner = styled.span`
+  animation: spin 0.75s linear infinite;
+  border: 2px solid rgb(255 255 255 / 45%);
+  border-radius: 999px;
+  border-top-color: #ffffff;
+  display: inline-block;
+  height: 14px;
+  width: 14px;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 `;
 
 export const ManifestPreview = styled.pre`

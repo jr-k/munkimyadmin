@@ -55,6 +55,14 @@ export const DangerButton = styled(Button)`
   background: #dc2626;
 `;
 
+export const BulkActions = styled.div`
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+`;
+
 export const TableCard = styled.div`
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -122,6 +130,16 @@ export const Badge = styled.span`
   font-weight: 800;
   padding: 4px 9px;
   text-transform: capitalize;
+`;
+
+export const StoreBadge = styled(Badge)`
+  background: #ede9fe;
+  color: #5b21b6;
+`;
+
+export const MutedText = styled.span`
+  color: #64748b;
+  font-size: 12px;
 `;
 
 export const PermissionList = styled.div`

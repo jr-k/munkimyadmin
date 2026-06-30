@@ -1,11 +1,11 @@
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConfirmModal from '../ConfirmModal';
 import FormField from '../FormField';
 import PaginationControls, { usePagination } from '../Pagination';
 import TableIcon from '../TableIcon';
 import { TranslationKey, useI18n } from '../../i18n';
-import { ManagedUser, PermissionAction, PermissionResource, UserRole } from '../../types';
+import { ManagedUser, PageProps, PermissionAction, PermissionResource, UserRole } from '../../types';
 import * as S from './styled';
 
 type UsersManagerProps = {
@@ -34,16 +34,27 @@ const emptyForm: UserFormData = {
 
 export default function UsersManager({ users, permissionResources, permissionActions }: UsersManagerProps) {
     const { t } = useI18n();
+    const { props } = usePage<PageProps>();
+    const safeMode = props.app.safe_mode;
     const sortedPermissionResources = [...permissionResources].sort((firstResource, secondResource) =>
         firstResource.localeCompare(secondResource, undefined, { sensitivity: 'base' }),
     );
     const [createOpen, setCreateOpen] = useState(false);
     const [userToEdit, setUserToEdit] = useState<ManagedUser | null>(null);
     const [userToDelete, setUserToDelete] = useState<ManagedUser | null>(null);
+    const [userToResetPassword, setUserToResetPassword] = useState<ManagedUser | null>(null);
+    const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [bulkPasswordResetOpen, setBulkPasswordResetOpen] = useState(false);
+    const [passwordResetSending, setPasswordResetSending] = useState(false);
+    const [bulkPasswordResetSending, setBulkPasswordResetSending] = useState(false);
     const form = useForm<UserFormData>(emptyForm);
     const editForm = useForm<UserFormData>(emptyForm);
     const usersPagination = usePagination(users);
     const paginatedUsers = usersPagination.items;
+    const visibleUserIds = paginatedUsers.map((user) => user.id);
+    const allVisibleUsersSelected = visibleUserIds.length > 0
+        && visibleUserIds.every((id) => selectedUserIds.includes(id));
 
     function openEdit(user: ManagedUser) {
         setUserToEdit(user);
@@ -134,6 +145,38 @@ export default function UsersManager({ users, permissionResources, permissionAct
         });
     }
 
+    function resetUserPassword() {
+        if (!userToResetPassword) {
+            return;
+        }
+
+        router.post(`/users/${userToResetPassword.id}/password-reset`, {}, {
+            onStart: () => setPasswordResetSending(true),
+            onFinish: () => {
+                setPasswordResetSending(false);
+                setUserToResetPassword(null);
+            },
+        });
+    }
+
+    function toggleUserSelection(userId: number) {
+        setSelectedUserIds((current) =>
+            current.includes(userId)
+                ? current.filter((id) => id !== userId)
+                : [...current, userId],
+        );
+    }
+
+    function toggleVisibleUsersSelection() {
+        setSelectedUserIds((current) => {
+            if (allVisibleUsersSelected) {
+                return current.filter((id) => !visibleUserIds.includes(id));
+            }
+
+            return Array.from(new Set([...current, ...visibleUserIds]));
+        });
+    }
+
     useEffect(() => {
         if (!createOpen && !userToEdit) {
             return;
@@ -163,6 +206,17 @@ export default function UsersManager({ users, permissionResources, permissionAct
                 </S.Button>
             </S.Toolbar>
 
+            {selectedUserIds.length > 0 ? (
+                <S.BulkActions>
+                    <S.SecondaryButton type="button" onClick={() => setBulkPasswordResetOpen(true)}>
+                        {t('users.bulkPasswordReset', { count: selectedUserIds.length })}
+                    </S.SecondaryButton>
+                    <S.DangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
+                        {t('common.bulkDelete', { count: selectedUserIds.length })}
+                    </S.DangerButton>
+                </S.BulkActions>
+            ) : null}
+
             <PaginationControls
                 page={usersPagination.page}
                 pageCount={usersPagination.pageCount}
@@ -177,6 +231,14 @@ export default function UsersManager({ users, permissionResources, permissionAct
                 <S.Table>
                     <thead>
                         <tr>
+                            <S.Th>
+                                <input
+                                    type="checkbox"
+                                    checked={allVisibleUsersSelected}
+                                    aria-label={t('common.selectAll')}
+                                    onChange={toggleVisibleUsersSelection}
+                                />
+                            </S.Th>
                             <S.Th>{t('users.name')}</S.Th>
                             <S.Th>{t('users.role')}</S.Th>
                             <S.Th>{t('users.permissions')}</S.Th>
@@ -187,9 +249,29 @@ export default function UsersManager({ users, permissionResources, permissionAct
                         {paginatedUsers.map((user) => (
                             <tr key={user.id}>
                                 <S.Td>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedUserIds.includes(user.id)}
+                                        aria-label={t('common.selectRow')}
+                                        onChange={() => toggleUserSelection(user.id)}
+                                    />
+                                </S.Td>
+                                <S.Td>
                                     <strong>{user.name}</strong>
+                                    {user.is_store_account ? (
+                                        <>
+                                            {' '}
+                                            <S.StoreBadge>{t('users.storeAccount')}</S.StoreBadge>
+                                        </>
+                                    ) : null}
                                     <br />
                                     {user.email}
+                                    {user.person ? (
+                                        <>
+                                            <br />
+                                            <S.MutedText>{t('users.linkedPerson', { name: user.person.name })}</S.MutedText>
+                                        </>
+                                    ) : null}
                                 </S.Td>
                                 <S.Td>
                                     <S.Badge>{t(roleLabel(user.role))}</S.Badge>
@@ -211,7 +293,7 @@ export default function UsersManager({ users, permissionResources, permissionAct
                                     <S.RowActions>
                                         <S.TableIconButton
                                             type="button"
-                                            disabled={user.is_owner}
+                                            disabled={user.is_owner && !safeMode}
                                             aria-label={t('common.edit')}
                                             title={t('common.edit')}
                                             onClick={() => openEdit(user)}
@@ -220,8 +302,16 @@ export default function UsersManager({ users, permissionResources, permissionAct
                                         </S.TableIconButton>
                                         <S.TableIconButton
                                             type="button"
+                                            aria-label={t('users.passwordReset')}
+                                            title={t('users.passwordReset')}
+                                            onClick={() => setUserToResetPassword(user)}
+                                        >
+                                            <TableIcon name="email" />
+                                        </S.TableIconButton>
+                                        <S.TableIconButton
+                                            type="button"
                                             $tone="danger"
-                                            disabled={user.is_owner}
+                                            disabled={user.is_owner || user.is_store_account}
                                             aria-label={t('common.delete')}
                                             title={t('common.delete')}
                                             onClick={() => setUserToDelete(user)}
@@ -280,6 +370,52 @@ export default function UsersManager({ users, permissionResources, permissionAct
                 description={t('users.deleteDescription', { name: userToDelete?.name ?? '' })}
                 onClose={() => setUserToDelete(null)}
                 onConfirm={deleteUser}
+            />
+            <ConfirmModal
+                open={Boolean(userToResetPassword)}
+                title={t('users.passwordResetTitle')}
+                description={t('users.passwordResetDescription', { email: userToResetPassword?.email ?? '' })}
+                confirmLabel={t('users.passwordResetConfirm')}
+                confirmLoading={passwordResetSending}
+                onClose={() => setUserToResetPassword(null)}
+                onConfirm={resetUserPassword}
+            />
+            <ConfirmModal
+                open={bulkPasswordResetOpen}
+                title={t('users.bulkPasswordResetTitle')}
+                description={t('users.bulkPasswordResetDescription', { count: selectedUserIds.length })}
+                confirmLabel={t('users.passwordResetConfirm')}
+                confirmLoading={bulkPasswordResetSending}
+                onClose={() => setBulkPasswordResetOpen(false)}
+                onConfirm={() => {
+                    router.post('/users/bulk/password-reset', {
+                        ids: selectedUserIds,
+                    }, {
+                        onStart: () => setBulkPasswordResetSending(true),
+                        onFinish: () => {
+                            setBulkPasswordResetSending(false);
+                            setBulkPasswordResetOpen(false);
+                            setSelectedUserIds([]);
+                        },
+                    });
+                }}
+            />
+            <ConfirmModal
+                open={bulkDeleteOpen}
+                title={t('users.bulkDeleteTitle')}
+                description={t('users.bulkDeleteDescription', { count: selectedUserIds.length })}
+                requireConfirmationCheckbox
+                confirmationLabel={t('common.confirmBulkDelete')}
+                onClose={() => setBulkDeleteOpen(false)}
+                onConfirm={() => {
+                    router.delete('/users/bulk', {
+                        data: { ids: selectedUserIds },
+                        onFinish: () => {
+                            setBulkDeleteOpen(false);
+                            setSelectedUserIds([]);
+                        },
+                    });
+                }}
             />
         </S.Container>
     );
@@ -381,6 +517,19 @@ function UserDialog({
                                     })}
                                 </S.MatrixRow>
                             ))}
+                            <S.MatrixRow>
+                                <strong>{t('users.resource.store')}</strong>
+                                <S.CheckboxLabel>
+                                    <input
+                                        type="checkbox"
+                                        checked={permissionsDisabled || form.data.permissions.includes('store.read')}
+                                        disabled={permissionsDisabled}
+                                        onChange={() => togglePermission(form, 'store.read')}
+                                    />
+                                    <span>{t('users.action.read')}</span>
+                                </S.CheckboxLabel>
+                                <span aria-hidden="true" />
+                            </S.MatrixRow>
                             <S.MatrixRow>
                                 <strong>{t('users.exportPermission')}</strong>
                                 <span aria-hidden="true" />

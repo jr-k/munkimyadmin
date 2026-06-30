@@ -5,7 +5,7 @@ import FlashMessage from '../../Components/FlashMessage';
 import FormField from '../../Components/FormField';
 import PackageIcon from '../../Components/PackageIcon';
 import { useI18n } from '../../i18n';
-import { PageProps } from '../../types';
+import { AssignmentAction, PageProps } from '../../types';
 import * as S from './styled';
 
 type FilterOption = {
@@ -29,7 +29,7 @@ type PackageResult = {
     assignments_count: number;
     assignments: {
         id: number;
-        action: 'install' | 'uninstall';
+        action: AssignmentAction;
         target: {
             id: number | null;
             type: 'person' | 'group';
@@ -75,6 +75,22 @@ export default function PackageIndex({ packages, groups, people, filters }: Pack
 
     function personLabel(person: FilterOption) {
         return [person.first_name, person.name].filter(Boolean).join(' ');
+    }
+
+    function actionLabel(action: AssignmentAction) {
+        if (action === 'install') {
+            return t('assignments.install');
+        }
+
+        if (action === 'uninstall') {
+            return t('assignments.uninstall');
+        }
+
+        if (action === 'optional_install') {
+            return t('assignments.optionalInstall');
+        }
+
+        return t('assignments.onDemand');
     }
 
     return (
@@ -177,7 +193,7 @@ export default function PackageIndex({ packages, groups, people, filters }: Pack
                                     ) : (
                                         pkg.assignments.map((assignment) => (
                                             <S.Badge key={assignment.id}>
-                                                {assignment.action === 'install' ? t('assignments.install') : t('assignments.uninstall')} ·{' '}
+                                                {actionLabel(assignment.action)} ·{' '}
                                                 {assignment.target.type === 'group' ? t('common.group') : t('common.person')} ·{' '}
                                                 {assignment.target.name}
                                             </S.Badge>

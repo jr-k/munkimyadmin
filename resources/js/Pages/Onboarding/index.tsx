@@ -3,12 +3,15 @@ import FormField from '../../Components/FormField';
 import LogoMark from '../../Components/LogoMark';
 import { useI18n } from '../../i18n';
 import { PageProps } from '../../types';
+import AuthLanguageSelect from '../Login/AuthLanguageSelect';
 import * as S from '../Login/styled';
 
 export default function Onboarding() {
     const { t } = useI18n();
     const { props } = usePage<PageProps>();
     const displayName = props.app.display_name;
+    const mainColor = props.app.main_color;
+    const logoUrl = props.app.logo_url;
     const form = useForm({
         name: '',
         email: '',
@@ -24,9 +27,10 @@ export default function Onboarding() {
     return (
         <S.LoginContainer>
             <Head title={t('onboarding.title')} />
+            <AuthLanguageSelect />
             <S.Panel onSubmit={submit}>
                 <S.Brand>
-                    <LogoMark size={42} />
+                    <LogoMark size={42} color={mainColor} logoUrl={logoUrl} />
                     <S.Title>{displayName}</S.Title>
                 </S.Brand>
                 <S.Help>{t('onboarding.help')}</S.Help>
@@ -61,7 +65,7 @@ export default function Onboarding() {
                         onChange={(event) => form.setData('password_confirmation', event.target.value)}
                     />
                 </FormField>
-                <S.Button type="submit" disabled={form.processing}>
+                <S.Button type="submit" disabled={form.processing} $mainColor={mainColor}>
                     {t('onboarding.submit')}
                 </S.Button>
             </S.Panel>

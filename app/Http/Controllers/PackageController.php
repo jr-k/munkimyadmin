@@ -17,18 +17,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PackageController extends Controller
 {
-    private const CATEGORIES = [
-        'browsers',
-        'developer_tools',
-        'security',
-        'productivity',
-        'communication',
-        'internal',
-        'utilities',
-        'media',
-        'system',
-    ];
-
     public function index(Request $request): Response
     {
         return Inertia::render('Packages', [
@@ -47,11 +35,13 @@ class PackageController extends Controller
                     'version' => $package->version,
                     'icon_path' => $package->icon_path,
                     'icon_url' => $package->icon_path ? route('packages.icon', ['package' => $package->public_id]) : null,
+                    'store_url' => route('store.packages.show', ['package' => $package->public_id]),
                     'pkg_path' => $package->pkg_path,
                     'pkg_file_url' => $package->pkg_path ? route('packages.file', ['package' => $package->public_id]) : null,
                     'hash' => $package->hash,
                     'pkg_url' => $package->pkg_url,
                     'active' => $package->active,
+                    'on_public_store' => $package->on_public_store,
                     'assignments_count' => $package->assignments_count,
                     'assignments' => $package->assignments->map(fn (Assignment $assignment) => [
                         'id' => $assignment->id,
@@ -89,6 +79,7 @@ class PackageController extends Controller
                 $package->pkg_path,
                 $package->pkg_url,
                 $package->active ? 'yes' : 'no',
+                $package->on_public_store ? 'yes' : 'no',
                 $package->assignments_count,
                 $package->hash,
                 $package->created_at?->toIso8601String(),
@@ -106,6 +97,7 @@ class PackageController extends Controller
             'pkg_path',
             'pkg_url',
             'active',
+            'on_public_store',
             'assignments_count',
             'hash',
             'created_at',
@@ -116,6 +108,7 @@ class PackageController extends Controller
     {
         $data = $this->validatedData($request);
         $data['active'] = (bool) ($data['active'] ?? true);
+        $data['on_public_store'] = (bool) ($data['on_public_store'] ?? false);
 
         if ($request->hasFile('icon')) {
             $data['icon_path'] = $request->file('icon')->store('icons');
@@ -136,6 +129,7 @@ class PackageController extends Controller
     {
         $data = $this->validatedData($request, $package);
         $data['active'] = (bool) ($data['active'] ?? false);
+        $data['on_public_store'] = (bool) ($data['on_public_store'] ?? false);
 
         if ($request->hasFile('icon')) {
             $data['icon_path'] = $request->file('icon')->store('icons');
@@ -178,6 +172,23 @@ class PackageController extends Controller
         return back()->with('success', ['key' => 'flash.packagesDeleted']);
     }
 
+    public function bulkEnablePublicStore(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:packages,id'],
+        ]);
+
+        $updated = Package::query()
+            ->whereKey($data['ids'])
+            ->update(['on_public_store' => true]);
+
+        return back()->with('success', [
+            'key' => 'flash.packagesPublicStoreEnabled',
+            'params' => ['count' => $updated],
+        ]);
+    }
+
     private function validatedData(Request $request, ?Package $package = null): array
     {
         $needsPackageSource = ! $request->hasFile('pkg_file')
@@ -193,7 +204,7 @@ class PackageController extends Controller
                 Rule::unique('packages', 'munki_name')->ignore($package),
             ],
             'display_name' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', Rule::in(self::CATEGORIES)],
+            'category' => ['required', 'string', Rule::in(Package::CATEGORIES)],
             'description' => ['nullable', 'string', 'max:2000'],
             'bundle_identifier' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9.-]+$/'],
             'version' => ['nullable', 'string', 'max:255'],
@@ -207,6 +218,7 @@ class PackageController extends Controller
             ],
             'pkg_url' => [Rule::requiredIf($needsPackageSource), 'nullable', 'url', 'max:2048'],
             'active' => ['boolean'],
+            'on_public_store' => ['boolean'],
         ]);
     }
 

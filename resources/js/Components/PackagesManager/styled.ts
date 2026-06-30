@@ -238,6 +238,7 @@ export const Button = styled.button`
   border-radius: 12px;
   color: #ffffff;
   display: inline-flex;
+  gap: 8px;
   font-weight: 800;
   justify-content: center;
   min-width: 96px;
@@ -260,6 +261,21 @@ export const SecondaryButton = styled.button`
   justify-content: center;
   padding: 11px 14px;
   text-decoration: none;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+`;
+
+export const BulkButton = styled(SecondaryButton)`
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+  height: 32px;
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
 `;
 
 export const ResetButton = styled(SecondaryButton)`
@@ -381,6 +397,18 @@ export const PackageTitle = styled.div`
   align-items: center;
   display: flex;
   gap: 10px;
+  min-width: 0;
+`;
+
+export const PackageStoreLink = styled.a`
+  border-radius: 12px;
+  display: inline-flex;
+  text-decoration: none;
+
+  &:focus-visible {
+    outline: 3px solid rgb(37 99 235 / 28%);
+    outline-offset: 3px;
+  }
 `;
 
 export const PackageTitleText = styled.div`
@@ -392,6 +420,18 @@ export const InlinePackage = styled.span`
   align-items: center;
   display: inline-flex;
   gap: 6px;
+  min-width: 0;
+`;
+
+export const MatrixPackageName = styled.strong`
+  color: #0f172a;
+  display: -webkit-box;
+  line-height: 1.25;
+  max-width: 240px;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 `;
 
 export const TargetTitle = styled.span`
@@ -516,6 +556,32 @@ export const DangerButton = styled.button`
   padding: 9px 12px;
 `;
 
+export const BulkDangerButton = styled(DangerButton)`
+  align-items: center;
+  border-radius: 9px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
+`;
+
+export const StoreIcon = styled.span`
+  align-items: center;
+  background: #dbeafe;
+  border: 0;
+  border-radius: 10px;
+  color: #1d4ed8;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  padding: 0;
+  width: 38px;
+`;
+
 export const TableIconButton = styled.button<{ $tone?: 'danger' | 'neutral' }>`
   align-items: center;
   background: ${({ $tone }) => ($tone === 'danger' ? '#fee2e2' : '#eef2ff')};
@@ -592,6 +658,16 @@ export const ModalActions = styled.div`
   justify-content: flex-end;
 `;
 
+export const BulkStatus = styled.div<{ $tone: 'success' | 'error' }>`
+  background: ${({ $tone }) => ($tone === 'success' ? '#dcfce7' : '#fee2e2')};
+  border: 1px solid ${({ $tone }) => ($tone === 'success' ? '#86efac' : '#fecaca')};
+  border-radius: 14px;
+  color: ${({ $tone }) => ($tone === 'success' ? '#166534' : '#991b1b')};
+  font-size: 14px;
+  font-weight: 800;
+  padding: 12px 14px;
+`;
+
 export const ImportActions = styled(ModalActions)`
   justify-content: flex-end;
 `;
@@ -649,10 +725,30 @@ export const AssignmentPills = styled.div`
   gap: 6px;
 `;
 
-export const AssignmentPill = styled.span<{ $action: 'install' | 'uninstall' }>`
-  background: ${({ $action }) => ($action === 'install' ? '#dcfce7' : '#fee2e2')};
+export const AssignmentPill = styled.span<{ $action: 'install' | 'uninstall' | 'on_demand' | 'optional_install' }>`
+  background: ${({ $action }) => {
+    if ($action === 'install' || $action === 'optional_install') {
+      return '#dcfce7';
+    }
+
+    if ($action === 'uninstall') {
+      return '#fee2e2';
+    }
+
+    return '#ede9fe';
+  }};
   border-radius: 999px;
-  color: ${({ $action }) => ($action === 'install' ? '#166534' : '#991b1b')};
+  color: ${({ $action }) => {
+    if ($action === 'install' || $action === 'optional_install') {
+      return '#166534';
+    }
+
+    if ($action === 'uninstall') {
+      return '#991b1b';
+    }
+
+    return '#5b21b6';
+  }};
   font-size: 12px;
   font-weight: 800;
   padding: 5px 9px;

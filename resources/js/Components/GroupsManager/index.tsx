@@ -595,9 +595,9 @@ export default function GroupsManager({ groups, people }: GroupsManagerProps) {
                 </div>
                 <S.FilterControls>
                     {canUpdateGroups && selectedGroupIds.length > 0 ? (
-                        <S.DangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
+                        <S.BulkDangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
                             {t('common.bulkDelete', { count: selectedGroupIds.length })}
-                        </S.DangerButton>
+                        </S.BulkDangerButton>
                     ) : null}
                     <S.FilterControl>
                         <span>{t('common.search')}</span>

@@ -259,6 +259,16 @@ export const SecondaryButton = styled.button`
   text-decoration: none;
 `;
 
+export const BulkButton = styled(SecondaryButton)`
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+  height: 32px;
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
+`;
+
 export const ResetButton = styled(SecondaryButton)`
   margin-right: auto;
 `;
@@ -398,6 +408,19 @@ export const DangerButton = styled.button`
   color: #991b1b;
   font-weight: 700;
   padding: 9px 12px;
+`;
+
+export const BulkDangerButton = styled(DangerButton)`
+  align-items: center;
+  border-radius: 9px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
 `;
 
 export const TableIconButton = styled.button<{ $tone?: 'danger' | 'neutral' }>`

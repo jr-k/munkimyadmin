@@ -5,6 +5,47 @@ export const LoginContainer = styled.main`
   display: grid;
   min-height: 100vh;
   padding: 24px;
+  position: relative;
+`;
+
+export const AuthLanguageSelectWrapper = styled.div`
+  position: absolute;
+  right: 24px;
+  top: 24px;
+
+  &::after {
+    color: #64748b;
+    content: '▾';
+    font-size: 12px;
+    pointer-events: none;
+    position: absolute;
+    right: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+`;
+
+export const AuthLanguageSelect = styled.select`
+  appearance: none;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 34px rgb(15 23 42 / 8%);
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+  min-height: 38px;
+  padding: 0 30px 0 12px;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  &:focus {
+    border-color: #94a3b8;
+    outline: 3px solid rgb(148 163 184 / 24%);
+  }
 `;
 
 export const Panel = styled.form`
@@ -49,8 +90,8 @@ export const Input = styled.input`
   padding: 12px 14px;
 `;
 
-export const Button = styled.button`
-  background: #2563eb;
+export const Button = styled.button<{ $mainColor?: string }>`
+  background: ${({ $mainColor }) => $mainColor ?? '#2563eb'};
   border: 0;
   border-radius: 12px;
   color: #ffffff;
@@ -63,8 +104,8 @@ export const LinkRow = styled.div`
   justify-content: center;
 `;
 
-export const TextLink = styled.a`
-  color: #2563eb;
+export const TextLink = styled.a<{ $mainColor?: string }>`
+  color: ${({ $mainColor }) => $mainColor ?? '#2563eb'};
   font-weight: 800;
   text-decoration: none;
 

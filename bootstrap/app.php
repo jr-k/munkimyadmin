@@ -7,6 +7,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use App\Http\Middleware\EnsureOnboardingIsComplete;
+use App\Http\Middleware\EnsureAdminAreaAccess;
+use App\Http\Middleware\EnsureStoreAccess;
 use App\Http\Middleware\EnsureUserPermission;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Support\Facades\Schema;
@@ -30,8 +32,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'admin.area' => EnsureAdminAreaAccess::class,
             'onboarded' => EnsureOnboardingIsComplete::class,
             'permission' => EnsureUserPermission::class,
+            'store.access' => EnsureStoreAccess::class,
         ]);
         $middleware->prependToPriorityList(Authenticate::class, EnsureOnboardingIsComplete::class);
 

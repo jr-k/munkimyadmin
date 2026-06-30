@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,7 +18,7 @@ class UserController extends Controller
 
         return Inertia::render('Users', [
             'users' => User::query()
-                ->with('permissions')
+                ->with('permissions', 'person')
                 ->orderByRaw("case role when ? then 0 when ? then 1 else 2 end", [User::ROLE_OWNER, User::ROLE_ADMIN])
                 ->orderBy('name')
                 ->get()
@@ -52,7 +53,7 @@ class UserController extends Controller
     {
         $this->authorizeUserManagement($request);
 
-        if ($user->is_owner) {
+        if ($user->is_owner && ! config('app.safe_mode')) {
             return back()->with('error', ['key' => 'flash.ownerLocked']);
         }
 
@@ -62,8 +63,8 @@ class UserController extends Controller
             $payload = [
                 'name' => $data['name'],
                 'email' => $data['email'],
-                'role' => $data['role'],
-                'is_owner' => false,
+                'role' => $user->is_owner ? $user->role : $data['role'],
+                'is_owner' => $user->is_owner,
             ];
 
             if (! empty($data['password'])) {
@@ -85,9 +86,86 @@ class UserController extends Controller
             return back()->with('error', ['key' => 'flash.ownerDeleteLocked']);
         }
 
+        if ($user->is_store_account) {
+            return back()->with('error', ['key' => 'flash.storeUserDeleteLocked']);
+        }
+
         User::query()->whereKey($user->getKey())->delete();
 
         return back()->with('success', ['key' => 'flash.userDeleted']);
+    }
+
+    public function bulkDestroy(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorizeUserManagement($request);
+
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $deleted = User::query()
+            ->whereKey($data['ids'])
+            ->where('is_owner', false)
+            ->where('is_store_account', false)
+            ->delete();
+
+        return back()->with('success', [
+            'key' => 'flash.usersDeleted',
+            'params' => ['count' => $deleted],
+        ]);
+    }
+
+    public function sendPasswordReset(Request $request, User $user): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorizeUserManagement($request);
+
+        $status = Password::sendResetLink(['email' => $user->email]);
+
+        if ($status !== Password::RESET_LINK_SENT) {
+            return back()->with('error', ['key' => 'flash.userPasswordResetFailed']);
+        }
+
+        return back()->with('success', ['key' => 'flash.userPasswordResetSent']);
+    }
+
+    public function bulkSendPasswordReset(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $this->authorizeUserManagement($request);
+
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $sent = 0;
+        $failed = 0;
+
+        User::query()
+            ->whereKey($data['ids'])
+            ->get()
+            ->each(function (User $user) use (&$sent, &$failed): void {
+                $status = Password::sendResetLink(['email' => $user->email]);
+
+                if ($status === Password::RESET_LINK_SENT) {
+                    $sent++;
+                    return;
+                }
+
+                $failed++;
+            });
+
+        if ($failed > 0) {
+            return back()->with('error', [
+                'key' => 'flash.usersPasswordResetPartial',
+                'params' => ['sent' => $sent, 'failed' => $failed],
+            ]);
+        }
+
+        return back()->with('success', [
+            'key' => 'flash.usersPasswordResetSent',
+            'params' => ['count' => $sent],
+        ]);
     }
 
     private function validatedData(Request $request, ?User $user = null): array
@@ -107,10 +185,6 @@ class UserController extends Controller
     {
         $user->permissions()->delete();
 
-        if ($user->role === User::ROLE_ADMIN) {
-            return;
-        }
-
         $permissions = collect($permissionKeys)
             ->map(fn (string $permission) => explode('.', $permission, 2))
             ->filter(fn (array $parts) => count($parts) === 2)
@@ -126,6 +200,16 @@ class UserController extends Controller
             ]);
         }
 
+        if ($user->role === User::ROLE_ADMIN) {
+            $permissions = $permissions->filter(
+                fn (array $permission) => $permission['resource'] === 'store' && $permission['action'] === 'read',
+            );
+
+            $user->permissions()->createMany($permissions->values()->all());
+
+            return;
+        }
+
         $user->permissions()->createMany($permissions->unique(fn (array $permission) => $permission['resource'].'.'.$permission['action'])->values()->all());
     }
 
@@ -137,6 +221,14 @@ class UserController extends Controller
             'email' => $user->email,
             'role' => $user->role,
             'is_owner' => $user->is_owner,
+            'person_id' => $user->person_id,
+            'is_store_account' => $user->is_store_account,
+            'store_account_enabled' => $user->store_account_enabled,
+            'person' => $user->person ? [
+                'id' => $user->person->id,
+                'name' => trim("{$user->person->first_name} {$user->person->name}"),
+                'email' => $user->person->email,
+            ] : null,
             'permissions' => $user->permissionKeys(),
             'created_at' => $user->created_at?->toIso8601String(),
             'last_login_at' => $user->last_login_at?->toIso8601String(),
@@ -148,11 +240,16 @@ class UserController extends Controller
         return collect(User::PERMISSION_RESOURCES)
             ->flatMap(fn (string $resource) => collect(User::PERMISSION_ACTIONS)
                 ->map(fn (string $action) => "{$resource}.{$action}"))
+            ->push(User::STORE_PERMISSION)
             ->all();
     }
 
     private function authorizeUserManagement(Request $request): void
     {
+        if (config('app.safe_mode')) {
+            return;
+        }
+
         abort_unless($request->user()?->canManageUsers(), 403);
     }
 }

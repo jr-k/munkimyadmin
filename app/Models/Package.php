@@ -8,6 +8,18 @@ use Illuminate\Support\Str;
 
 class Package extends Model
 {
+    public const CATEGORIES = [
+        'browsers',
+        'developer_tools',
+        'security',
+        'productivity',
+        'communication',
+        'internal',
+        'utilities',
+        'media',
+        'system',
+    ];
+
     protected $fillable = [
         'munki_name',
         'display_name',
@@ -20,6 +32,7 @@ class Package extends Model
         'hash',
         'pkg_url',
         'active',
+        'on_public_store',
     ];
 
     protected static function booted(): void
@@ -33,6 +46,7 @@ class Package extends Model
     {
         return [
             'active' => 'boolean',
+            'on_public_store' => 'boolean',
         ];
     }
 

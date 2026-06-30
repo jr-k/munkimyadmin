@@ -8,7 +8,7 @@ import TableIcon from '../TableIcon';
 import TargetIcon from '../TargetIcon';
 import { type TranslationKey, useI18n } from '../../i18n';
 import { can } from '../../permissions';
-import { Package, PageProps } from '../../types';
+import { AssignmentAction, Package, PageProps } from '../../types';
 import * as S from './styled';
 
 type PackagesManagerProps = {
@@ -29,6 +29,22 @@ const packageCategories = [
 
 type PackageCategory = (typeof packageCategories)[number];
 
+function assignmentSymbol(action: AssignmentAction) {
+    if (action === 'install') {
+        return '+';
+    }
+
+    if (action === 'uninstall') {
+        return '-';
+    }
+
+    if (action === 'optional_install') {
+        return '✓';
+    }
+
+    return '•';
+}
+
 type PackageFormData = {
     munki_name: string;
     display_name: string;
@@ -42,6 +58,7 @@ type PackageFormData = {
     hash: string;
     pkg_url: string;
     active: boolean;
+    on_public_store: boolean;
 };
 
 function isPackageCategory(category: string | null): category is PackageCategory {
@@ -49,6 +66,7 @@ function isPackageCategory(category: string | null): category is PackageCategory
 }
 
 type SortDirection = 'asc' | 'desc';
+type StoreFilter = 'all' | 'enabled' | 'disabled';
 type PackageSortKey =
     | 'display_name'
     | 'munki_name'
@@ -57,6 +75,7 @@ type PackageSortKey =
     | 'version'
     | 'source'
     | 'active'
+    | 'on_public_store'
     | 'assignments_count'
     | 'hash';
 
@@ -75,12 +94,16 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [sourceFilter, setSourceFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [storeFilter, setStoreFilter] = useState<StoreFilter>('all');
     const [sort, setSort] = useState<{ key: PackageSortKey; direction: SortDirection }>({
         key: 'display_name',
         direction: 'asc',
     });
     const [selectedPackageIds, setSelectedPackageIds] = useState<number[]>([]);
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [bulkPublicStoreOpen, setBulkPublicStoreOpen] = useState(false);
+    const [bulkPublicStoreSaving, setBulkPublicStoreSaving] = useState(false);
+    const [bulkPublicStoreStatus, setBulkPublicStoreStatus] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
     const form = useForm<PackageFormData>({
         munki_name: '',
         display_name: '',
@@ -94,6 +117,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
         hash: '',
         pkg_url: '',
         active: true,
+        on_public_store: false,
     });
     const editForm = useForm<PackageFormData>({
         munki_name: '',
@@ -108,6 +132,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
         hash: '',
         pkg_url: '',
         active: true,
+        on_public_store: false,
     });
 
     function openCreateModal() {
@@ -157,6 +182,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
             hash: pkg.hash,
             pkg_url: pkg.pkg_url ?? '',
             active: pkg.active,
+            on_public_store: pkg.on_public_store,
         };
     }
 
@@ -193,6 +219,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
         .filter((pkg) => {
             const source = pkg.pkg_path ? 'uploaded' : 'remote';
             const status = pkg.active ? 'active' : 'inactive';
+            const storeStatus = pkg.on_public_store ? 'enabled' : 'disabled';
             const categoryLabel = packageCategoryLabel(pkg.category);
             const searchable = [
                 pkg.display_name,
@@ -202,13 +229,15 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                 pkg.version ?? '',
                 pkg.pkg_url ?? '',
                 pkg.hash,
+                pkg.on_public_store ? t('packages.onPublicStore') : '',
             ].join(' ').toLowerCase();
 
             return (
                 (!normalizedSearch || searchable.includes(normalizedSearch)) &&
                 (categoryFilter === 'all' || categoryFilter === pkg.category) &&
                 (sourceFilter === 'all' || sourceFilter === source) &&
-                (statusFilter === 'all' || statusFilter === status)
+                (statusFilter === 'all' || statusFilter === status) &&
+                (storeFilter === 'all' || storeFilter === storeStatus)
             );
         })
         .sort((firstPackage, secondPackage) => {
@@ -252,7 +281,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                 string,
                 {
                     target: NonNullable<Package['assignments']>[number]['target'];
-                    assignments: { package: Package; action: 'install' | 'uninstall' }[];
+                    assignments: { package: Package; action: AssignmentAction }[];
                 }
             >
         >((rows, pkg) => {
@@ -315,6 +344,10 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
 
         if (key === 'active') {
             return pkg.active ? t('packages.activeStatus') : t('packages.inactiveStatus');
+        }
+
+        if (key === 'on_public_store') {
+            return pkg.on_public_store ? t('packages.storeVisible') : t('packages.storeHidden');
         }
 
         if (key === 'category') {
@@ -405,6 +438,34 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
         setCategoryFilter('all');
         setSourceFilter('all');
         setStatusFilter('all');
+        setStoreFilter('all');
+    }
+
+    function submitBulkPublicStore() {
+        setBulkPublicStoreStatus(null);
+        router.post('/packages/bulk/public-store', {
+            ids: selectedPackageIds,
+        }, {
+            preserveScroll: true,
+            onStart: () => setBulkPublicStoreSaving(true),
+            onSuccess: (page) => {
+                const flash = page.props.flash as { error?: unknown };
+
+                if (flash.error) {
+                    setBulkPublicStoreStatus({ tone: 'error', message: t('packages.bulkPublicStoreError') });
+                    return;
+                }
+
+                setBulkPublicStoreStatus({
+                    tone: 'success',
+                    message: t('packages.bulkPublicStoreSuccess', { count: selectedPackageIds.length }),
+                });
+                setBulkPublicStoreOpen(false);
+                setSelectedPackageIds([]);
+            },
+            onError: () => setBulkPublicStoreStatus({ tone: 'error', message: t('packages.bulkPublicStoreError') }),
+            onFinish: () => setBulkPublicStoreSaving(false),
+        });
     }
 
     useEffect(() => {
@@ -585,6 +646,22 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                             <S.SwitchText>
                                 <strong>{t('packages.active')}</strong>
                                 <span>{t('packages.activeHelp')}</span>
+                            </S.SwitchText>
+                        </S.SwitchLabel>
+                    </S.Full>
+                    <S.Full as={S.SwitchBlock}>
+                        <S.SwitchLabel>
+                            <S.SwitchInput
+                                type="checkbox"
+                                checked={form.data.on_public_store}
+                                onChange={(event) => form.setData('on_public_store', event.target.checked)}
+                            />
+                            <S.SwitchTrack aria-hidden="true">
+                                <S.SwitchThumb />
+                            </S.SwitchTrack>
+                            <S.SwitchText>
+                                <strong>{t('packages.onPublicStore')}</strong>
+                                <span>{t('packages.onPublicStoreHelp')}</span>
                             </S.SwitchText>
                         </S.SwitchLabel>
                     </S.Full>
@@ -796,6 +873,22 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                     </S.SwitchText>
                                 </S.SwitchLabel>
                             </S.Full>
+                            <S.Full as={S.SwitchBlock}>
+                                <S.SwitchLabel>
+                                    <S.SwitchInput
+                                        type="checkbox"
+                                        checked={editForm.data.on_public_store}
+                                        onChange={(event) => editForm.setData('on_public_store', event.target.checked)}
+                                    />
+                                    <S.SwitchTrack aria-hidden="true">
+                                        <S.SwitchThumb />
+                                    </S.SwitchTrack>
+                                    <S.SwitchText>
+                                        <strong>{t('packages.onPublicStore')}</strong>
+                                        <span>{t('packages.onPublicStoreHelp')}</span>
+                                    </S.SwitchText>
+                                </S.SwitchLabel>
+                            </S.Full>
                             {renderUploadProgress(editUploadProgress)}
                             <S.ModalActions>
                                 <S.Button type="submit" disabled={editForm.processing}>
@@ -911,13 +1004,13 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                                                         $action={assignment.action}
                                                                     >
                                                                         <S.InlinePackage>
-                                                                            {assignment.action === 'install' ? '+' : '-'}
+                                                                            {assignmentSymbol(assignment.action)}
                                                                             <PackageIcon
                                                                                 iconUrl={assignment.package.icon_url}
                                                                                 name={assignment.package.display_name}
                                                                                 size="sm"
                                                                             />
-                                                                            {assignment.package.display_name}
+                                                                            <S.MatrixPackageName>{assignment.package.display_name}</S.MatrixPackageName>
                                                                         </S.InlinePackage>
                                                                     </S.AssignmentPill>
                                                                 ))}
@@ -948,7 +1041,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                                         <td>
                                                             <S.PackageTitle>
                                                                 <PackageIcon iconUrl={row.package.icon_url} name={row.package.display_name} />
-                                                                <S.PrimaryCell>{row.package.display_name}</S.PrimaryCell>
+                                                                <S.MatrixPackageName>{row.package.display_name}</S.MatrixPackageName>
                                                             </S.PackageTitle>
                                                         </td>
                                                         <td>
@@ -964,7 +1057,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                                                             key={assignment.id}
                                                                             $action={assignment.action}
                                                                         >
-                                                                            {assignment.action === 'install' ? '+' : '-'}{' '}
+                                                                            {assignmentSymbol(assignment.action)}{' '}
                                                                             <S.InlineTarget>
                                                                                 {assignment.target.type === 'group' ? t('common.group') : t('common.person')}
                                                                                 <TargetIcon type={assignment.target.type} />
@@ -1017,9 +1110,20 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                 </div>
                 <S.FilterControls>
                     {canUpdatePackages && selectedPackageIds.length > 0 ? (
-                        <S.DangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
-                            {t('common.bulkDelete', { count: selectedPackageIds.length })}
-                        </S.DangerButton>
+                        <>
+                            <S.BulkButton
+                                type="button"
+                                onClick={() => {
+                                    setBulkPublicStoreStatus(null);
+                                    setBulkPublicStoreOpen(true);
+                                }}
+                            >
+                                {t('packages.bulkPublicStore', { count: selectedPackageIds.length })}
+                            </S.BulkButton>
+                            <S.BulkDangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
+                                {t('common.bulkDelete', { count: selectedPackageIds.length })}
+                            </S.BulkDangerButton>
+                        </>
                     ) : null}
                     <S.FilterControl>
                         <span>{t('common.search')}</span>
@@ -1054,6 +1158,14 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                             <option value="all">{t('packages.allStatuses')}</option>
                             <option value="active">{t('packages.activeStatus')}</option>
                             <option value="inactive">{t('packages.inactiveStatus')}</option>
+                        </S.FilterSelect>
+                    </S.FilterControl>
+                    <S.FilterControl>
+                        <span>{t('common.store')}</span>
+                        <S.FilterSelect value={storeFilter} onChange={(event) => setStoreFilter(event.target.value as StoreFilter)}>
+                            <option value="all">{t('common.all')}</option>
+                            <option value="enabled">{t('packages.storeVisible')}</option>
+                            <option value="disabled">{t('packages.storeHidden')}</option>
                         </S.FilterSelect>
                     </S.FilterControl>
                     <S.DangerButton type="button" onClick={resetFilters} aria-label={t('common.reset')} title={t('common.reset')}>
@@ -1117,6 +1229,11 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                 </S.SortButton>
                             </S.CenterHeader>
                             <S.CenterHeader>
+                                <S.SortButton type="button" onClick={() => changeSort('on_public_store')}>
+                                    {t('common.store')}{sortIndicator('on_public_store')}
+                                </S.SortButton>
+                            </S.CenterHeader>
+                            <S.CenterHeader>
                                 <S.SortButton type="button" onClick={() => changeSort('assignments_count')}>
                                     {t('packages.assignmentCount')}{sortIndicator('assignments_count')}
                                 </S.SortButton>
@@ -1127,7 +1244,7 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                     <tbody>
                         {filteredPackages.length === 0 ? (
                             <tr>
-                                <S.EmptyCell colSpan={canUpdatePackages ? 9 : 7}>{t('packages.noMatch')}</S.EmptyCell>
+                                <S.EmptyCell colSpan={canUpdatePackages ? 10 : 8}>{t('packages.noMatch')}</S.EmptyCell>
                             </tr>
                         ) : (
                             paginatedPackages.map((pkg) => (
@@ -1144,7 +1261,15 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                     ) : null}
                                     <td>
                                         <S.PackageTitle>
-                                            <PackageIcon iconUrl={pkg.icon_url} name={pkg.display_name} />
+                                            <S.PackageStoreLink
+                                                href={pkg.store_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                aria-label={t('store.openPackagePage')}
+                                                title={t('store.openPackagePage')}
+                                            >
+                                                <PackageIcon iconUrl={pkg.icon_url} name={pkg.display_name} />
+                                            </S.PackageStoreLink>
                                             <S.PackageTitleText>
                                                 <S.PrimaryCell>{pkg.display_name}</S.PrimaryCell>
                                             </S.PackageTitleText>
@@ -1174,6 +1299,16 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                                         >
                                             <span aria-hidden="true">{pkg.active ? '✓' : '×'}</span>
                                         </S.StatusBadge>
+                                    </S.StatusCell>
+                                    <S.StatusCell>
+                                        {pkg.on_public_store ? (
+                                            <S.StoreIcon
+                                                aria-label={t('packages.storeVisible')}
+                                                title={t('packages.storeVisible')}
+                                            >
+                                                <TableIcon name="store" />
+                                            </S.StoreIcon>
+                                        ) : null}
                                     </S.StatusCell>
                                     <S.CountCell>{pkg.assignments_count ?? 0}</S.CountCell>
                                     {canUpdatePackages ? (
@@ -1215,6 +1350,45 @@ export default function PackagesManager({ packages }: PackagesManagerProps) {
                 onPageChange={packagesPagination.setPage}
                 onPageSizeChange={packagesPagination.setPageSize}
             />
+            {canUpdatePackages && bulkPublicStoreOpen ? (
+                <S.ModalOverlay
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !bulkPublicStoreSaving) {
+                            setBulkPublicStoreOpen(false);
+                        }
+                    }}
+                >
+                    <S.Dialog onClick={(event) => event.stopPropagation()}>
+                        <S.ModalHeader>
+                            <div>
+                                <S.ModalTitle>{t('packages.bulkPublicStoreTitle')}</S.ModalTitle>
+                                <S.ModalDescription>
+                                    {t('packages.bulkPublicStoreDescription', { count: selectedPackageIds.length })}
+                                </S.ModalDescription>
+                            </div>
+                            <S.IconButton
+                                type="button"
+                                onClick={() => setBulkPublicStoreOpen(false)}
+                                disabled={bulkPublicStoreSaving}
+                                aria-label={t('common.close')}
+                            >
+                                ×
+                            </S.IconButton>
+                        </S.ModalHeader>
+                        {bulkPublicStoreStatus ? (
+                            <S.BulkStatus $tone={bulkPublicStoreStatus.tone}>
+                                {bulkPublicStoreStatus.message}
+                            </S.BulkStatus>
+                        ) : null}
+                        <S.ModalActions>
+                            <S.Button type="button" onClick={submitBulkPublicStore} disabled={bulkPublicStoreSaving || selectedPackageIds.length === 0}>
+                                {bulkPublicStoreSaving ? <S.ButtonSpinner aria-label={t('packages.bulkPublicStoreSaving')} /> : null}
+                                {bulkPublicStoreSaving ? t('packages.bulkPublicStoreSaving') : t('packages.bulkPublicStoreConfirm')}
+                            </S.Button>
+                        </S.ModalActions>
+                    </S.Dialog>
+                </S.ModalOverlay>
+            ) : null}
             {canUpdatePackages ? <ConfirmModal
                 open={packageToDelete !== null}
                 title={t('packages.deleteTitle')}

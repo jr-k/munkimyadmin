@@ -82,6 +82,42 @@ export const FilterControls = styled.div`
   }
 `;
 
+export const MatrixBanner = styled.div`
+  align-items: center;
+  background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+  border: 1px solid #c4b5fd;
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgb(99 102 241 / 12%);
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 18px 20px;
+  width: 100%;
+
+  @media (max-width: 720px) {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+`;
+
+export const MatrixBannerContent = styled.div`
+  min-width: 0;
+`;
+
+export const MatrixBannerTitle = styled.strong`
+  color: #312e81;
+  display: block;
+  font-size: 16px;
+`;
+
+export const MatrixBannerText = styled.p`
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 5px 0 0;
+  max-width: 760px;
+`;
+
 export const FilterControl = styled.label`
   align-items: center;
   color: #334155;
@@ -145,43 +181,10 @@ export const Select = styled.select`
   padding: 11px 12px;
 `;
 
-export const ActionChoice = styled.div`
-  background: #f1f5f9;
-  border-radius: 14px;
-  display: grid;
-  gap: 4px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding: 4px;
-`;
-
-export const ActionChoiceButton = styled.button<{ $active: boolean; $action: 'install' | 'uninstall' }>`
-  background: ${({ $active }) => ($active ? '#ffffff' : 'transparent')};
-  border: 1px solid ${({ $action }) => {
-    if ($action === 'install') {
-      return '#86efac';
-    }
-
-    if ($action === 'uninstall') {
-      return '#fecaca';
-    }
-
-    return '#cbd5e1';
-  }};
-  border-radius: 10px;
-  box-shadow: ${({ $active }) => ($active ? '0 6px 16px rgb(15 23 42 / 10%)' : 'none')};
-  color: ${({ $active, $action }) => {
-    if (!$active) {
-      return '#475569';
-    }
-
-    return $action === 'install' ? '#166534' : '#991b1b';
-  }};
-  font-weight: 900;
-  padding: 11px 12px;
-`;
-
 export const SearchDropdown = styled.div`
+  min-width: 0;
   position: relative;
+  width: 100%;
 `;
 
 export const DropdownTrigger = styled.button`
@@ -192,6 +195,8 @@ export const DropdownTrigger = styled.button`
   display: flex;
   justify-content: space-between;
   min-height: 52px;
+  min-width: 0;
+  overflow: hidden;
   padding: 9px 12px;
   text-align: left;
   width: 100%;
@@ -227,9 +232,11 @@ export const DropdownPanel = styled.div`
   gap: 8px;
   left: 0;
   margin-top: 8px;
+  max-width: 100%;
   padding: 8px;
   position: absolute;
   right: 0;
+  width: 100%;
   z-index: 20;
 `;
 
@@ -255,9 +262,12 @@ export const DropdownOption = styled.button<{ $selected: boolean }>`
   border-radius: 12px;
   color: #0f172a;
   display: flex;
+  gap: 10px;
   justify-content: space-between;
+  min-width: 0;
   padding: 10px 12px;
   text-align: left;
+  width: 100%;
 
   &:hover {
     background: #f1f5f9;
@@ -270,7 +280,10 @@ export const OptionEyebrow = styled.span`
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.05em;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 `;
 
 export const OptionLabel = styled.span`
@@ -278,12 +291,20 @@ export const OptionLabel = styled.span`
   display: block;
   font-weight: 800;
   margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 export const PackageOption = styled.span`
   align-items: center;
   display: flex;
   gap: 10px;
+  min-width: 0;
+
+  > span:last-child {
+    min-width: 0;
+  }
 `;
 
 export const SelectionSummary = styled.span`
@@ -296,18 +317,33 @@ export const TargetOption = styled.span`
   align-items: center;
   display: flex;
   gap: 10px;
+  min-width: 0;
+
+  > span:last-child {
+    min-width: 0;
+  }
 `;
 
 export const PackageTitle = styled.span`
   align-items: center;
   display: inline-flex;
   gap: 10px;
+  min-width: 0;
+
+  > span:last-child {
+    min-width: 0;
+  }
 `;
 
 export const TargetTitle = styled.span`
   align-items: center;
   display: inline-flex;
   gap: 10px;
+  min-width: 0;
+
+  > span:last-child {
+    min-width: 0;
+  }
 `;
 
 export const InlinePackage = styled.span`
@@ -350,9 +386,31 @@ export const SecondaryButton = styled.button`
   text-decoration: none;
 `;
 
+export const BulkButton = styled(SecondaryButton)`
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+  height: 32px;
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
+`;
+
 export const MatrixButton = styled(SecondaryButton)`
-  background: #f3e8ff;
-  color: #6b21a8;
+  background: #6d28d9;
+  border-radius: 12px;
+  color: #ffffff;
+  flex: 0 0 auto;
+  font-weight: 800;
+  padding: 11px 16px;
+
+  &:hover {
+    background: #5b21b6;
+  }
+
+  @media (max-width: 720px) {
+    width: 100%;
+  }
 `;
 
 export const ResetButton = styled(SecondaryButton)`
@@ -428,13 +486,34 @@ export const CodePill = styled.code`
   padding: 4px 8px;
 `;
 
-export const ActionBadge = styled.span<{ $action: 'install' | 'uninstall' }>`
-  background: ${({ $action }) => ($action === 'install' ? '#dcfce7' : '#fee2e2')};
+export const ActionBadge = styled.span<{ $action: 'install' | 'uninstall' | 'on_demand' | 'optional_install' }>`
+  background: ${({ $action }) => {
+    if ($action === 'install' || $action === 'optional_install') {
+      return '#dcfce7';
+    }
+
+    if ($action === 'uninstall') {
+      return '#fee2e2';
+    }
+
+    return '#ede9fe';
+  }};
   border-radius: 999px;
-  color: ${({ $action }) => ($action === 'install' ? '#166534' : '#991b1b')};
+  color: ${({ $action }) => {
+    if ($action === 'install' || $action === 'optional_install') {
+      return '#166534';
+    }
+
+    if ($action === 'uninstall') {
+      return '#991b1b';
+    }
+
+    return '#5b21b6';
+  }};
   font-size: 12px;
   font-weight: 800;
   padding: 4px 8px;
+  white-space: nowrap;
 `;
 
 export const EmptyCell = styled.td`
@@ -463,6 +542,25 @@ export const DangerButton = styled.button`
   color: #991b1b;
   font-weight: 700;
   padding: 9px 12px;
+`;
+
+export const BulkDangerButton = styled(DangerButton)`
+  align-items: center;
+  border-radius: 9px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 10px;
+  white-space: nowrap;
+`;
+
+export const TableActions = styled.div`
+  align-items: center;
+  display: flex;
+  gap: 8px;
 `;
 
 export const TableIconButton = styled.button<{ $tone?: 'danger' | 'neutral' }>`
@@ -670,6 +768,16 @@ export const MatrixPackageTitle = styled.span`
   display: flex;
   gap: 8px;
   line-height: 1.2;
+  min-width: 0;
+`;
+
+export const MatrixPackageName = styled.span`
+  display: -webkit-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 `;
 
 export const MatrixRowHeader = styled.th`
@@ -690,18 +798,22 @@ export const MatrixRowMeta = styled.span`
   margin-top: 3px;
 `;
 
-export const MatrixCell = styled.td<{ $action: '-' | 'install' | 'uninstall' | 'inherited'; $disabled: boolean; $inherited: boolean }>`
+export const MatrixCell = styled.td<{ $action: '-' | 'install' | 'uninstall' | 'on_demand' | 'optional_install' | 'inherited'; $disabled: boolean; $inherited: boolean }>`
   background: ${({ $action, $inherited }) => {
     if ($inherited) {
       return '#d2d8e0';
     }
 
-    if ($action === 'install') {
+    if ($action === 'install' || $action === 'optional_install') {
       return '#f0fdf4';
     }
 
     if ($action === 'uninstall') {
       return '#fef2f2';
+    }
+
+    if ($action === 'on_demand') {
+      return '#f5f3ff';
     }
 
     if ($action === 'inherited') {
@@ -711,12 +823,16 @@ export const MatrixCell = styled.td<{ $action: '-' | 'install' | 'uninstall' | '
     return '#ffffff';
   }};
   color: ${({ $action }) => {
-    if ($action === 'install') {
+    if ($action === 'install' || $action === 'optional_install') {
       return '#166534';
     }
 
     if ($action === 'uninstall') {
       return '#991b1b';
+    }
+
+    if ($action === 'on_demand') {
+      return '#5b21b6';
     }
 
     return '#475569';
@@ -748,18 +864,22 @@ export const MatrixCellStatus = styled.div`
   width: 100%;
 `;
 
-export const MatrixCellSelect = styled.select<{ $action: '-' | 'install' | 'uninstall'; $inherited: boolean }>`
+export const MatrixCellSelect = styled.select<{ $action: '-' | 'install' | 'uninstall' | 'on_demand' | 'optional_install'; $inherited: boolean }>`
   background: ${({ $action, $inherited }) => {
     if ($inherited) {
       return '#cbd5e1';
     }
 
-    if ($action === 'install') {
+    if ($action === 'install' || $action === 'optional_install') {
       return '#dcfce7';
     }
 
     if ($action === 'uninstall') {
       return '#fee2e2';
+    }
+
+    if ($action === 'on_demand') {
+      return '#ede9fe';
     }
 
     return '#e2e8f0';
@@ -769,12 +889,16 @@ export const MatrixCellSelect = styled.select<{ $action: '-' | 'install' | 'unin
       return '#94a3b8';
     }
 
-    if ($action === 'install') {
+    if ($action === 'install' || $action === 'optional_install') {
       return '#86efac';
     }
 
     if ($action === 'uninstall') {
       return '#fecaca';
+    }
+
+    if ($action === 'on_demand') {
+      return '#c4b5fd';
     }
 
     return '#cbd5e1';
@@ -783,12 +907,16 @@ export const MatrixCellSelect = styled.select<{ $action: '-' | 'install' | 'unin
   border-width: ${({ $inherited }) => ($inherited ? '0px' : '1px')};
   border-radius: 9px;
   color: ${({ $action }) => {
-    if ($action === 'install') {
+    if ($action === 'install' || $action === 'optional_install') {
       return '#166534';
     }
 
     if ($action === 'uninstall') {
       return '#991b1b';
+    }
+
+    if ($action === 'on_demand') {
+      return '#5b21b6';
     }
 
     return '#334155';

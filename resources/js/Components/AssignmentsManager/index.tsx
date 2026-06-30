@@ -8,7 +8,7 @@ import TableIcon from '../TableIcon';
 import TargetIcon from '../TargetIcon';
 import { useI18n } from '../../i18n';
 import { can } from '../../permissions';
-import { Assignment, Group, Package, PageProps, Person } from '../../types';
+import { Assignment, AssignmentAction, Group, Package, PageProps, Person } from '../../types';
 import * as S from './styled';
 
 type AssignmentsManagerProps = {
@@ -21,12 +21,18 @@ type AssignmentsManagerProps = {
 type AssignmentFormData = {
     package_ids: string[];
     targets: string[];
-    action: 'install' | 'uninstall';
+    action: AssignmentAction;
+};
+
+type EditAssignmentFormData = {
+    package_id: string;
+    target: string;
+    action: AssignmentAction;
 };
 
 type SortDirection = 'asc' | 'desc';
-type AssignmentSortKey = 'package' | 'munki_name' | 'action' | 'target_type' | 'target';
-type MatrixAction = '-' | 'install' | 'uninstall';
+type AssignmentSortKey = 'package' | 'action' | 'target_type' | 'target';
+type MatrixAction = '-' | AssignmentAction;
 type MatrixTargetRow = {
     key: string;
     type: 'group' | 'person';
@@ -66,6 +72,11 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
     const [targetDropdownOpen, setTargetDropdownOpen] = useState(false);
     const [packageSearch, setPackageSearch] = useState('');
     const [targetSearch, setTargetSearch] = useState('');
+    const [editPackageDropdownOpen, setEditPackageDropdownOpen] = useState(false);
+    const [editPackageSearch, setEditPackageSearch] = useState('');
+    const [editTargetDropdownOpen, setEditTargetDropdownOpen] = useState(false);
+    const [editTargetSearch, setEditTargetSearch] = useState('');
+    const [assignmentToEdit, setAssignmentToEdit] = useState<Assignment | null>(null);
     const [assignmentToDelete, setAssignmentToDelete] = useState<Assignment | null>(null);
     const [search, setSearch] = useState('');
     const [actionFilter, setActionFilter] = useState('all');
@@ -80,10 +91,17 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
     const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
     const packageDropdownRef = useRef<HTMLDivElement | null>(null);
     const targetDropdownRef = useRef<HTMLDivElement | null>(null);
+    const editPackageDropdownRef = useRef<HTMLDivElement | null>(null);
+    const editTargetDropdownRef = useRef<HTMLDivElement | null>(null);
     const targetFilterDropdownRef = useRef<HTMLDivElement | null>(null);
     const form = useForm<AssignmentFormData>({
         package_ids: [],
         targets: [],
+        action: 'install',
+    });
+    const editForm = useForm<EditAssignmentFormData>({
+        package_id: '',
+        target: '',
         action: 'install',
     });
 
@@ -115,6 +133,63 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
         });
     }
 
+    function openEditModal(assignment: Assignment) {
+        if (assignment.package.id === null || assignment.target.id === null) {
+            return;
+        }
+
+        setAssignmentToEdit(assignment);
+        setEditPackageDropdownOpen(false);
+        setEditPackageSearch('');
+        setEditTargetDropdownOpen(false);
+        setEditTargetSearch('');
+        editForm.clearErrors();
+        editForm.setData({
+            package_id: String(assignment.package.id),
+            target: `${assignment.target.type}:${assignment.target.id}`,
+            action: assignment.action,
+        });
+    }
+
+    function closeEditModal() {
+        setAssignmentToEdit(null);
+        setEditPackageDropdownOpen(false);
+        setEditPackageSearch('');
+        setEditTargetDropdownOpen(false);
+        setEditTargetSearch('');
+        editForm.clearErrors();
+        editForm.reset();
+    }
+
+    function resetEditForm() {
+        if (!assignmentToEdit || assignmentToEdit.package.id === null || assignmentToEdit.target.id === null) {
+            return;
+        }
+
+        editForm.clearErrors();
+        setEditPackageDropdownOpen(false);
+        setEditPackageSearch('');
+        setEditTargetDropdownOpen(false);
+        setEditTargetSearch('');
+        editForm.setData({
+            package_id: String(assignmentToEdit.package.id),
+            target: `${assignmentToEdit.target.type}:${assignmentToEdit.target.id}`,
+            action: assignmentToEdit.action,
+        });
+    }
+
+    function submitEdit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        if (!assignmentToEdit) {
+            return;
+        }
+
+        editForm.put(`/assignments/${assignmentToEdit.id}`, {
+            onSuccess: closeEditModal,
+        });
+    }
+
     function personLabel(person: Person) {
         return [person.first_name, person.name].filter(Boolean).join(' ');
     }
@@ -134,7 +209,9 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
         })),
     ];
     const selectedPackages = packages.filter((pkg) => form.data.package_ids.includes(String(pkg.id)));
+    const selectedEditPackage = packages.find((pkg) => String(pkg.id) === editForm.data.package_id) ?? null;
     const selectedTargets = targetOptions.filter((target) => form.data.targets.includes(target.id));
+    const selectedEditTarget = targetOptions.find((target) => target.id === editForm.data.target) ?? null;
     const selectedFilterTargets = targetOptions.filter((target) => selectedFilterTargetIds.includes(target.id));
     const filteredFilterTargets = targetOptions.filter((target) =>
         [target.eyebrow, target.label].join(' ').toLowerCase().includes(targetFilterSearch.trim().toLowerCase()),
@@ -142,8 +219,14 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
     const filteredPackages = packages.filter((pkg) =>
         [pkg.display_name, pkg.munki_name].join(' ').toLowerCase().includes(packageSearch.trim().toLowerCase()),
     );
+    const filteredEditPackages = packages.filter((pkg) =>
+        [pkg.display_name, pkg.munki_name].join(' ').toLowerCase().includes(editPackageSearch.trim().toLowerCase()),
+    );
     const filteredTargets = targetOptions.filter((target) =>
         [target.eyebrow, target.label].join(' ').toLowerCase().includes(targetSearch.trim().toLowerCase()),
+    );
+    const filteredEditTargets = targetOptions.filter((target) =>
+        [target.eyebrow, target.label].join(' ').toLowerCase().includes(editTargetSearch.trim().toLowerCase()),
     );
     const assignmentByMatrixCell = useMemo(() => {
         return assignments.reduce<Record<string, Assignment>>((lookup, assignment) => {
@@ -406,13 +489,25 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
             });
         });
 
+    function assignmentActionLabel(action: AssignmentAction) {
+        if (action === 'install') {
+            return t('assignments.install');
+        }
+
+        if (action === 'uninstall') {
+            return t('assignments.uninstall');
+        }
+
+        if (action === 'optional_install') {
+            return t('assignments.optionalInstall');
+        }
+
+        return t('assignments.onDemand');
+    }
+
     function sortValue(assignment: Assignment, key: AssignmentSortKey) {
         if (key === 'package') {
             return assignment.package.name ?? '';
-        }
-
-        if (key === 'munki_name') {
-            return assignment.package.munki_name ?? '';
         }
 
         if (key === 'target_type') {
@@ -423,7 +518,7 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
             return assignment.target.name ?? '';
         }
 
-        return assignment.action === 'install' ? t('assignments.install') : t('assignments.uninstall');
+        return assignmentActionLabel(assignment.action);
     }
 
     function changeSort(key: AssignmentSortKey) {
@@ -466,7 +561,7 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
     }
 
     useEffect(() => {
-        if (!createOpen && !matrixOpen && !targetFilterOpen) {
+        if (!createOpen && !assignmentToEdit && !matrixOpen && !targetFilterOpen) {
             return;
         }
 
@@ -475,12 +570,16 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                 return;
             }
 
-            if (packageDropdownOpen || targetDropdownOpen || targetFilterOpen) {
+            if (packageDropdownOpen || targetDropdownOpen || editPackageDropdownOpen || editTargetDropdownOpen || targetFilterOpen) {
                 setPackageDropdownOpen(false);
                 setTargetDropdownOpen(false);
+                setEditPackageDropdownOpen(false);
+                setEditTargetDropdownOpen(false);
                 setTargetFilterOpen(false);
                 setPackageSearch('');
                 setTargetSearch('');
+                setEditPackageSearch('');
+                setEditTargetSearch('');
                 setTargetFilterSearch('');
                 return;
             }
@@ -490,16 +589,21 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                 return;
             }
 
+            if (assignmentToEdit) {
+                closeEditModal();
+                return;
+            }
+
             setMatrixOpen(false);
         }
 
         window.addEventListener('keydown', closeOnEscape);
 
         return () => window.removeEventListener('keydown', closeOnEscape);
-    }, [createOpen, matrixOpen, packageDropdownOpen, targetDropdownOpen, targetFilterOpen]);
+    }, [assignmentToEdit, createOpen, editPackageDropdownOpen, editTargetDropdownOpen, matrixOpen, packageDropdownOpen, targetDropdownOpen, targetFilterOpen]);
 
     useEffect(() => {
-        if (!packageDropdownOpen && !targetDropdownOpen && !targetFilterOpen) {
+        if (!packageDropdownOpen && !targetDropdownOpen && !editPackageDropdownOpen && !editTargetDropdownOpen && !targetFilterOpen) {
             return;
         }
 
@@ -513,6 +617,8 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
             if (
                 packageDropdownRef.current?.contains(target)
                 || targetDropdownRef.current?.contains(target)
+                || editPackageDropdownRef.current?.contains(target)
+                || editTargetDropdownRef.current?.contains(target)
                 || targetFilterDropdownRef.current?.contains(target)
             ) {
                 return;
@@ -520,14 +626,18 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
 
             setPackageDropdownOpen(false);
             setTargetDropdownOpen(false);
+            setEditPackageDropdownOpen(false);
+            setEditTargetDropdownOpen(false);
             setTargetFilterOpen(false);
+            setEditPackageSearch('');
+            setEditTargetSearch('');
             setTargetFilterSearch('');
         }
 
         document.addEventListener('mousedown', closeOnOutsideClick);
 
         return () => document.removeEventListener('mousedown', closeOnOutsideClick);
-    }, [packageDropdownOpen, targetDropdownOpen, targetFilterOpen]);
+    }, [editPackageDropdownOpen, editTargetDropdownOpen, packageDropdownOpen, targetDropdownOpen, targetFilterOpen]);
 
     return (
         <S.AssignmentsManagerContainer>
@@ -542,9 +652,6 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                             {t('common.exportCsv')}
                         </S.SecondaryButton>
                     ) : null}
-                    <S.MatrixButton type="button" onClick={() => setMatrixOpen(true)}>
-                        {t('assignments.matrix')}
-                    </S.MatrixButton>
                     {canUpdateAssignments ? (
                         <S.Button type="button" onClick={() => setCreateOpen(true)}>
                             {t('common.add')}
@@ -706,24 +813,15 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                 </FormField>
                             </S.FormGrid>
                             <FormField label={t('assignments.action')} error={form.errors.action}>
-                                <S.ActionChoice>
-                                    <S.ActionChoiceButton
-                                        type="button"
-                                        $active={form.data.action === 'install'}
-                                        $action="install"
-                                        onClick={() => form.setData('action', 'install')}
-                                    >
-                                        {t('assignments.install')}
-                                    </S.ActionChoiceButton>
-                                    <S.ActionChoiceButton
-                                        type="button"
-                                        $active={form.data.action === 'uninstall'}
-                                        $action="uninstall"
-                                        onClick={() => form.setData('action', 'uninstall')}
-                                    >
-                                        {t('assignments.uninstall')}
-                                    </S.ActionChoiceButton>
-                                </S.ActionChoice>
+                                <S.Select
+                                    value={form.data.action}
+                                    onChange={(event) => form.setData('action', event.target.value as AssignmentAction)}
+                                >
+                                    <option value="install">{t('assignments.install')}</option>
+                                    <option value="uninstall">{t('assignments.uninstall')}</option>
+                                    <option value="on_demand">{t('assignments.onDemand')}</option>
+                                    <option value="optional_install">{t('assignments.optionalInstall')}</option>
+                                </S.Select>
                             </FormField>
                             <S.ModalActions>
                                 <S.ResetButton type="button" onClick={resetCreateForm}>
@@ -731,6 +829,172 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                 </S.ResetButton>
                                 <S.Button type="submit" disabled={form.processing}>
                                     {t('assignments.assign')}
+                                </S.Button>
+                            </S.ModalActions>
+                        </S.Form>
+                    </S.Dialog>
+                </S.ModalOverlay>
+            ) : null}
+
+            {canUpdateAssignments && assignmentToEdit ? (
+                <S.ModalOverlay
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) {
+                            closeEditModal();
+                        }
+                    }}
+                >
+                    <S.Dialog onClick={(event) => event.stopPropagation()}>
+                        <S.ModalHeader>
+                            <div>
+                                <S.ModalTitle>{t('assignments.editTitle')}</S.ModalTitle>
+                                <S.ModalDescription>{t('assignments.editDescription')}</S.ModalDescription>
+                            </div>
+                            <S.IconButton type="button" onClick={closeEditModal} aria-label={t('common.close')}>
+                                ×
+                            </S.IconButton>
+                        </S.ModalHeader>
+                        <S.Form onSubmit={submitEdit}>
+                            <S.FormGrid>
+                                <FormField label={t('assignments.package')} error={editForm.errors.package_id}>
+                                    <S.SearchDropdown ref={editPackageDropdownRef}>
+                                        <S.DropdownTrigger
+                                            autoFocus
+                                            type="button"
+                                            onClick={() => setEditPackageDropdownOpen((open) => !open)}
+                                        >
+                                            {selectedEditPackage ? (
+                                                <S.SelectionSummary>
+                                                    <S.PackageOption>
+                                                        <PackageIcon iconUrl={selectedEditPackage.icon_url} name={selectedEditPackage.display_name} />
+                                                        <span>
+                                                            <S.OptionEyebrow>{selectedEditPackage.munki_name}</S.OptionEyebrow>
+                                                            <S.OptionLabel>{selectedEditPackage.display_name}</S.OptionLabel>
+                                                        </span>
+                                                    </S.PackageOption>
+                                                </S.SelectionSummary>
+                                            ) : (
+                                                <S.Placeholder>{t('assignments.choosePackage')}</S.Placeholder>
+                                            )}
+                                            <S.Caret aria-hidden="true">▾</S.Caret>
+                                        </S.DropdownTrigger>
+                                        {editPackageDropdownOpen ? (
+                                            <S.DropdownPanel>
+                                                <S.DropdownSearch
+                                                    value={editPackageSearch}
+                                                    onChange={(event) => setEditPackageSearch(event.target.value)}
+                                                    placeholder={t('assignments.searchPackage')}
+                                                    autoFocus
+                                                />
+                                                <S.DropdownList>
+                                                    {filteredEditPackages.length === 0 ? (
+                                                        <S.EmptyOption>{t('assignments.noPackage')}</S.EmptyOption>
+                                                    ) : (
+                                                        filteredEditPackages.map((pkg) => (
+                                                            <S.DropdownOption
+                                                                key={pkg.id}
+                                                                type="button"
+                                                                $selected={editForm.data.package_id === String(pkg.id)}
+                                                                onClick={() => {
+                                                                    editForm.setData('package_id', String(pkg.id));
+                                                                    setEditPackageDropdownOpen(false);
+                                                                    setEditPackageSearch('');
+                                                                }}
+                                                            >
+                                                                <S.PackageOption>
+                                                                    <PackageIcon iconUrl={pkg.icon_url} name={pkg.display_name} />
+                                                                    <span>
+                                                                        <S.OptionEyebrow>{pkg.munki_name}</S.OptionEyebrow>
+                                                                        <S.OptionLabel>{pkg.display_name}</S.OptionLabel>
+                                                                    </span>
+                                                                </S.PackageOption>
+                                                                {editForm.data.package_id === String(pkg.id) ? <span aria-hidden="true">✓</span> : null}
+                                                            </S.DropdownOption>
+                                                        ))
+                                                    )}
+                                                </S.DropdownList>
+                                            </S.DropdownPanel>
+                                        ) : null}
+                                    </S.SearchDropdown>
+                                </FormField>
+                                <FormField label={t('assignments.target')} error={editForm.errors.target}>
+                                    <S.SearchDropdown ref={editTargetDropdownRef}>
+                                        <S.DropdownTrigger
+                                            type="button"
+                                            onClick={() => setEditTargetDropdownOpen((open) => !open)}
+                                        >
+                                            {selectedEditTarget ? (
+                                                <S.SelectionSummary>
+                                                    <S.TargetOption>
+                                                        <TargetIcon type={selectedEditTarget.type} />
+                                                        <span>
+                                                            <S.OptionEyebrow>{selectedEditTarget.eyebrow}</S.OptionEyebrow>
+                                                            <S.OptionLabel>{selectedEditTarget.label}</S.OptionLabel>
+                                                        </span>
+                                                    </S.TargetOption>
+                                                </S.SelectionSummary>
+                                            ) : (
+                                                <S.Placeholder>{t('assignments.chooseTarget')}</S.Placeholder>
+                                            )}
+                                            <S.Caret aria-hidden="true">▾</S.Caret>
+                                        </S.DropdownTrigger>
+                                        {editTargetDropdownOpen ? (
+                                            <S.DropdownPanel>
+                                                <S.DropdownSearch
+                                                    value={editTargetSearch}
+                                                    onChange={(event) => setEditTargetSearch(event.target.value)}
+                                                    placeholder={t('assignments.searchTarget')}
+                                                    autoFocus
+                                                />
+                                                <S.DropdownList>
+                                                    {filteredEditTargets.length === 0 ? (
+                                                        <S.EmptyOption>{t('assignments.noTarget')}</S.EmptyOption>
+                                                    ) : (
+                                                        filteredEditTargets.map((target) => (
+                                                            <S.DropdownOption
+                                                                key={target.id}
+                                                                type="button"
+                                                                $selected={editForm.data.target === target.id}
+                                                                onClick={() => {
+                                                                    editForm.setData('target', target.id);
+                                                                    setEditTargetDropdownOpen(false);
+                                                                    setEditTargetSearch('');
+                                                                }}
+                                                            >
+                                                                <S.TargetOption>
+                                                                    <TargetIcon type={target.type} />
+                                                                    <span>
+                                                                        <S.OptionEyebrow>{target.eyebrow}</S.OptionEyebrow>
+                                                                        <S.OptionLabel>{target.label}</S.OptionLabel>
+                                                                    </span>
+                                                                </S.TargetOption>
+                                                                {editForm.data.target === target.id ? <span aria-hidden="true">✓</span> : null}
+                                                            </S.DropdownOption>
+                                                        ))
+                                                    )}
+                                                </S.DropdownList>
+                                            </S.DropdownPanel>
+                                        ) : null}
+                                    </S.SearchDropdown>
+                                </FormField>
+                            </S.FormGrid>
+                            <FormField label={t('assignments.action')} error={editForm.errors.action}>
+                                <S.Select
+                                    value={editForm.data.action}
+                                    onChange={(event) => editForm.setData('action', event.target.value as AssignmentAction)}
+                                >
+                                    <option value="install">{t('assignments.install')}</option>
+                                    <option value="uninstall">{t('assignments.uninstall')}</option>
+                                    <option value="on_demand">{t('assignments.onDemand')}</option>
+                                    <option value="optional_install">{t('assignments.optionalInstall')}</option>
+                                </S.Select>
+                            </FormField>
+                            <S.ModalActions>
+                                <S.ResetButton type="button" onClick={resetEditForm}>
+                                    {t('common.reset')}
+                                </S.ResetButton>
+                                <S.Button type="submit" disabled={editForm.processing}>
+                                    {t('common.save')}
                                 </S.Button>
                             </S.ModalActions>
                         </S.Form>
@@ -799,7 +1063,7 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                             <S.MatrixPackageHeader key={pkg.id}>
                                                 <S.MatrixPackageTitle>
                                                     <PackageIcon iconUrl={pkg.icon_url} name={pkg.display_name} size="sm" />
-                                                    <span>{pkg.display_name}</span>
+                                                    <S.MatrixPackageName>{pkg.display_name}</S.MatrixPackageName>
                                                 </S.MatrixPackageTitle>
                                             </S.MatrixPackageHeader>
                                         ))}
@@ -834,10 +1098,10 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                                     const cell = matrixCellState(row, pkg);
                                                     const actionLabel = cell.action === '-'
                                                         ? '-'
-                                                        : (cell.action === 'install' ? t('assignments.install') : t('assignments.uninstall'));
-                                                    const inheritedActionLabel = cell.inherited?.action === 'uninstall'
-                                                        ? t('assignments.uninstall')
-                                                        : t('assignments.install');
+                                                        : assignmentActionLabel(cell.action);
+                                                    const inheritedActionLabel = cell.inherited
+                                                        ? assignmentActionLabel(cell.inherited.action)
+                                                        : '-';
                                                     const effectiveAction = cell.directAssignment
                                                         ? cell.action
                                                         : (cell.inherited?.action ?? cell.action);
@@ -874,6 +1138,8 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                                                         <option value="-">-</option>
                                                                         <option value="install">{t('assignments.install')}</option>
                                                                         <option value="uninstall">{t('assignments.uninstall')}</option>
+                                                                        <option value="on_demand">{t('assignments.onDemand')}</option>
+                                                                        <option value="optional_install">{t('assignments.optionalInstall')}</option>
                                                                     </S.MatrixCellSelect>
                                                                     {cell.inherited ? (
                                                                         <S.MatrixInheritedLabel>
@@ -895,6 +1161,16 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                 </S.FullscreenOverlay>
             ) : null}
 
+            <S.MatrixBanner>
+                <S.MatrixBannerContent>
+                    <S.MatrixBannerTitle>{t('assignments.matrixBannerTitle')}</S.MatrixBannerTitle>
+                    <S.MatrixBannerText>{t('assignments.matrixBannerText')}</S.MatrixBannerText>
+                </S.MatrixBannerContent>
+                <S.MatrixButton type="button" onClick={() => setMatrixOpen(true)}>
+                    {t('assignments.openMatrix')}
+                </S.MatrixButton>
+            </S.MatrixBanner>
+
             <S.FilterBar>
                 <div>
                     <S.FilterTitle>{t('assignments.listTitle')}</S.FilterTitle>
@@ -902,9 +1178,9 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                 </div>
                 <S.FilterControls>
                     {canUpdateAssignments && selectedAssignmentIds.length > 0 ? (
-                        <S.DangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
+                        <S.BulkDangerButton type="button" onClick={() => setBulkDeleteOpen(true)}>
                             {t('common.bulkDelete', { count: selectedAssignmentIds.length })}
-                        </S.DangerButton>
+                        </S.BulkDangerButton>
                     ) : null}
                     <S.FilterControl>
                         <span>{t('common.search')}</span>
@@ -920,6 +1196,8 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                             <option value="all">{t('assignments.allActions')}</option>
                             <option value="install">{t('assignments.install')}</option>
                             <option value="uninstall">{t('assignments.uninstall')}</option>
+                            <option value="on_demand">{t('assignments.onDemand')}</option>
+                            <option value="optional_install">{t('assignments.optionalInstall')}</option>
                         </S.FilterSelect>
                     </S.FilterControl>
                     <S.FilterControl>
@@ -1016,11 +1294,6 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                 </S.SortButton>
                             </th>
                             <th>
-                                <S.SortButton type="button" onClick={() => changeSort('munki_name')}>
-                                    {t('packages.munkiName')}{sortIndicator('munki_name')}
-                                </S.SortButton>
-                            </th>
-                            <th>
                                 <S.SortButton type="button" onClick={() => changeSort('action')}>
                                     {t('assignments.action')}{sortIndicator('action')}
                                 </S.SortButton>
@@ -1036,7 +1309,7 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                     <tbody>
                         {filteredAssignments.length === 0 ? (
                             <tr>
-                                <S.EmptyCell colSpan={canUpdateAssignments ? 6 : 4}>{t('assignments.noMatch')}</S.EmptyCell>
+                                <S.EmptyCell colSpan={canUpdateAssignments ? 5 : 3}>{t('assignments.noMatch')}</S.EmptyCell>
                             </tr>
                         ) : (
                             paginatedAssignments.map((assignment) => (
@@ -1057,10 +1330,9 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                             <S.PrimaryCell>{assignment.package.name}</S.PrimaryCell>
                                         </S.PackageTitle>
                                     </td>
-                                    <td>{assignment.package.munki_name ?? '-'}</td>
                                     <td>
                                         <S.ActionBadge $action={assignment.action}>
-                                            {assignment.action === 'install' ? t('assignments.install') : t('assignments.uninstall')}
+                                            {assignmentActionLabel(assignment.action)}
                                         </S.ActionBadge>
                                     </td>
                                     <td>
@@ -1071,15 +1343,25 @@ export default function AssignmentsManager({ assignments, groups, packages, peop
                                     </td>
                                     {canUpdateAssignments ? (
                                         <td>
-                                            <S.TableIconButton
-                                                type="button"
-                                                $tone="danger"
-                                                aria-label={t('common.delete')}
-                                                title={t('common.delete')}
-                                                onClick={() => setAssignmentToDelete(assignment)}
-                                            >
-                                                <TableIcon name="delete" />
-                                            </S.TableIconButton>
+                                            <S.TableActions>
+                                                <S.TableIconButton
+                                                    type="button"
+                                                    aria-label={t('common.edit')}
+                                                    title={t('common.edit')}
+                                                    onClick={() => openEditModal(assignment)}
+                                                >
+                                                    <TableIcon name="edit" />
+                                                </S.TableIconButton>
+                                                <S.TableIconButton
+                                                    type="button"
+                                                    $tone="danger"
+                                                    aria-label={t('common.delete')}
+                                                    title={t('common.delete')}
+                                                    onClick={() => setAssignmentToDelete(assignment)}
+                                                >
+                                                    <TableIcon name="delete" />
+                                                </S.TableIconButton>
+                                            </S.TableActions>
                                         </td>
                                     ) : null}
                                 </tr>
