@@ -37,7 +37,18 @@ class MunkiRepoController extends Controller
             ]);
         }
 
-        return response()->file($filePath);
+        return response()->file($filePath, $this->fileHeaders($filePath));
+    }
+
+    private function fileHeaders(string $path): array
+    {
+        return [
+            'Accept-Ranges' => 'bytes',
+            'Cache-Control' => 'no-transform',
+            'Content-Length' => (string) File::size($path),
+            'Content-Type' => File::mimeType($path) ?: 'application/octet-stream',
+            'X-Content-Type-Options' => 'nosniff',
+        ];
     }
 
     private function directoryIndex(string $path, string $relativePath = ''): string
