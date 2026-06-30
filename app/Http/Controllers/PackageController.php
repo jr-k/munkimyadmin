@@ -154,6 +154,7 @@ class PackageController extends Controller
 
     public function destroy(Package $package): \Illuminate\Http\RedirectResponse
     {
+        $this->deleteStoredFiles($package);
         Package::query()->whereKey($package->getKey())->delete();
 
         return back()->with('success', ['key' => 'flash.packageDeleted']);
@@ -166,7 +167,13 @@ class PackageController extends Controller
             'ids.*' => ['integer', 'exists:packages,id'],
         ]);
 
-        Package::query()->whereKey($data['ids'])->delete();
+        Package::query()
+            ->whereKey($data['ids'])
+            ->get()
+            ->each(function (Package $package): void {
+                $this->deleteStoredFiles($package);
+                Package::query()->whereKey($package->getKey())->delete();
+            });
 
         return back()->with('success', ['key' => 'flash.packagesDeleted']);
     }
@@ -237,5 +244,22 @@ class PackageController extends Controller
             ->trim('-')
             ->append('.'.$extension)
             ->value();
+    }
+
+    private function deleteStoredFiles(Package $package): void
+    {
+        if ($package->pkg_path) {
+            Storage::disk('local')->delete($package->pkg_path);
+
+            $directory = dirname($package->pkg_path);
+
+            if ($directory !== '.' && $directory !== 'packages') {
+                Storage::disk('local')->deleteDirectory($directory);
+            }
+        }
+
+        if ($package->icon_path) {
+            Storage::disk('local')->delete($package->icon_path);
+        }
     }
 }

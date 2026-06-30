@@ -139,7 +139,7 @@ class MunkiManifestGenerator
             if (File::exists($storedPackagePath)) {
                 File::ensureDirectoryExists(dirname($packagePath.'/'.$packageFilePath));
                 File::copy($storedPackagePath, $packagePath.'/'.$packageFilePath);
-                $installerItemLocation = $this->urlPath($packageFilePath);
+                $installerItemLocation = $packageFilePath;
             }
         }
 
@@ -308,18 +308,7 @@ class MunkiManifestGenerator
     {
         $path = str_replace('\\', '/', (string) $package->pkg_path);
 
-        if (Str::startsWith($path, 'packages/')) {
-            return Str::after($path, 'packages/');
-        }
-
         return basename($path);
-    }
-
-    private function urlPath(string $path): string
-    {
-        return collect(explode('/', $path))
-            ->map(fn (string $segment) => rawurlencode($segment))
-            ->implode('/');
     }
 
     private function categoryLabel(?string $category): string
